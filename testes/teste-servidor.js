@@ -25,6 +25,11 @@ const DISP = [
   dev('B-1', 'dmk_127_0_0_1_exemplo', 'exemplo.ana', 'ANA'),
   dev('X-1', 'dmk_127_0_0_1', '', 'SOLTO'),
 ];
+// A-1: IP de internet, canal 2,4 GHz automático (sem 5 GHz) e aparelhos já lidos
+Object.assign(DISP[0].VirtualParameters, {
+  dmk_wan_ip: { _value: '177.1.2.3' }, dmk_canal_24: { _value: 'auto|6|1-13' }, dmk_canal_5: { _value: '' },
+  dmk_aparelhos: { _value: JSON.stringify([{ n: 'PC-Sala', m: 'bb:bb:bb:00:00:03', i: '192.168.1.20', c: 'cabo' }, { n: 'Celular-Ana', m: 'aa:aa:aa:00:00:01', i: '192.168.1.10', c: '24' }]), _timestamp: agora },
+});
 const gravados = {}; const tarefas = []; const apagados = [];
 const valorDe = (d, k) => k.split('.').reduce((n, p) => n?.[p], d)?._value ?? k.split('.').reduce((n, p) => n?.[p], d);
 
@@ -160,7 +165,10 @@ const nbiFalsa = http.createServer((req, res) => {
   assert.equal((await starnet('GET', '/api/central/resumo')).status, 401, 'provedor não entra na Central');
   r = await starnet('GET', '/api/provedor/roteadores');
   assert.deepEqual(r.json.map((x) => x.id).sort(), ['A-1', 'A-2']);
-  assert.equal(r.json.find((x) => x.id === 'A-1').ip, '100.64.0.9');
+  assert.equal(r.json.find((x) => x.id === 'A-1').ip, '177.1.2.3', 'IP de internet (WAN) do roteador');
+  assert.equal(r.json.find((x) => x.id === 'A-2').ip, '100.64.0.9', 'sem WAN lido: IP de onde o roteador fala com o ACS');
+  assert.deepEqual(r.json.find((x) => x.id === 'A-1').canal24, { auto: true, canal: 6, possiveis: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] });
+  assert.equal(r.json.find((x) => x.id === 'A-1').canal5, null, 'sem 5 GHz');
   r = await starnet('POST', '/api/provedor/roteadores/B-1/wifi', { ssid: 'INVASAO', senha: '12345678' });
   assert.equal(r.status, 404, 'roteador de outro provedor');
   assert.equal(tarefas.length, 0);
@@ -177,6 +185,23 @@ const nbiFalsa = http.createServer((req, res) => {
   assert.equal(r.status, 422, 'roteador recusou');
   assert.match(r.json.erro, /recusou.*não aceita esse comando \(código 9000\)/);
   assert.deepEqual(apagados, ['/tasks/tf1', '/faults/A-1%3Atask_tf1'], 'tarefa e falha limpas');
+  // Canal do Wi-Fi e aparelhos conectados
+  r = await starnet('POST', '/api/provedor/roteadores/A-1/canal', { faixa: '24', canal: 14 });
+  assert.equal(r.status, 400); assert.equal(r.json.campo, 'canal', 'canal fora da lista do roteador');
+  r = await starnet('POST', '/api/provedor/roteadores/A-1/canal', { faixa: '9', canal: 1 });
+  assert.equal(r.json.campo, 'faixa');
+  r = await starnet('POST', '/api/provedor/roteadores/A-1/canal', { faixa: '24', canal: 11 });
+  assert.equal(r.json.situacao, 'aplicado');
+  assert.deepEqual(tarefas.at(-1).parameterValues, [['VirtualParameters.dmk_canal_24', '11', 'xsd:string']]);
+  r = await starnet('POST', '/api/provedor/roteadores/A-1/canal', { faixa: '5', canal: 'auto' });
+  assert.deepEqual(tarefas.at(-1).parameterValues, [['VirtualParameters.dmk_canal_5', 'auto', 'xsd:string']]);
+  r = await starnet('POST', '/api/provedor/roteadores/B-1/canal', { faixa: '24', canal: 1 });
+  assert.equal(r.status, 404, 'canal de roteador de outro provedor');
+  r = await starnet('POST', '/api/provedor/roteadores/A-1/aparelhos');
+  assert.equal(r.json.situacao, 'aplicado');
+  assert.deepEqual(tarefas.at(-1), { id: 'A-1', name: 'getParameterValues', parameterNames: ['VirtualParameters.dmk_aparelhos'] });
+  assert.deepEqual(r.json.aparelhos.map((a) => [a.nome, a.conexao, a.mac]), [['Celular-Ana', 'Wi-Fi 2,4 GHz', 'AA:AA:AA:00:00:01'], ['PC-Sala', 'Cabo', 'BB:BB:BB:00:00:03']], 'Wi-Fi primeiro');
+  assert.ok(r.json.lidoEm);
 
   // 6) Central desativa o provedor -> provedor bloqueado na hora
   await central('PUT', '/api/central/provedores/starnet', { ativo: false });
@@ -233,6 +258,10 @@ const nbiFalsa = http.createServer((req, res) => {
   assert.equal(r.status, 200); assert.equal(r.json.cliente, 'ANA PAULA SOUZA'); assert.equal(r.json.pppoe, 'exemplo.ana');
   r = await prisma('GET', '/api/integracao/roteador?provedor=starnet&pppoe=exemplo.ana', null, B);
   assert.equal(r.status, 404, 'login de outro provedor não aparece');
+  r = await prisma('POST', '/api/integracao/canal', { provedor: 'exemplo', pppoe: 'exemplo.ana', faixa: '24', canal: 6 }, B);
+  assert.equal(r.status, 200); assert.deepEqual(tarefas.at(-1).parameterValues, [['VirtualParameters.dmk_canal_24', '6', 'xsd:string']]);
+  r = await prisma('GET', '/api/integracao/aparelhos?provedor=exemplo&pppoe=exemplo.ana', null, B);
+  assert.equal(r.status, 200); assert.ok(Array.isArray(r.json.aparelhos));
   r = await prisma('POST', '/api/integracao/reiniciar', { provedor: 'exemplo', pppoe: 'exemplo.ana' }, B);
   assert.equal(r.status, 200); assert.equal(tarefas.at(-1).name, 'reboot');
   r = await prisma('DELETE', '/api/integracao/provedores/novo-net', null, B);

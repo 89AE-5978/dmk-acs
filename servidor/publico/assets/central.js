@@ -22,6 +22,7 @@
   try { secao = sessionStorage.getItem('dmkacs-secao') || secao; } catch { /* sem armazenamento */ }   // F5 mantém a seção
 
   // ------------------------------------------------------------ erros e sessão
+  DMK.definirTratarErro((e) => tratarErro(e));
   function tratarErro(e) {
     if (e.status === 401) { location.href = '../admin/'; return; }
     avisar('Não deu certo', e.message, 'erro');
@@ -230,12 +231,25 @@
       icone: 'usuario', titulo: c.nome, sub: `Código ${c.codigo} · ${situacaoAvulso(c).toLowerCase()}`,
       abas: [
         { id: 'roteador', rotulo: 'Roteador', icone: 'roteador', desenhar: roteador },
+        { id: 'canal', rotulo: 'Canal', icone: 'canal', desenhar: (corpo) => comRoteador(corpo, (r) => DMK.desenharCanal(corpo, j.rodape, r, `${urlRot(r)}/canal`, carregar)) },
+        { id: 'aparelhos', rotulo: 'Aparelhos', icone: 'aparelho', desenhar: (corpo) => comRoteador(corpo, (r) => DMK.desenharAparelhos(corpo, j.rodape, `${urlRot(r)}/aparelhos`)) },
         { id: 'dados', rotulo: 'Dados', icone: 'usuario', desenhar: dados },
         { id: 'conexao', rotulo: 'Como conectar', icone: 'link', desenhar: (corpo) => { j.rodape.innerHTML = ''; corpo.append(blocoConexao(c.enderecoAcs)); } },
         { id: 'acesso', rotulo: 'Acesso ao app', icone: 'cadeado', desenhar: acesso },
       ],
       rodape: ' ',
     });
+
+    const urlRot = (r) => `../api/central/avulsos/${c.codigo}/roteadores/${encodeURIComponent(r.id)}`;
+    // Abas que precisam do roteador do cliente: busca e, sem roteador ainda, mostra o aviso
+    async function comRoteador(corpo, desenhar) {
+      j.rodape.innerHTML = '';
+      corpo.innerHTML = '<p class="fraco">Carregando…</p>';
+      let rs;
+      try { rs = await api('GET', `../api/central/avulsos/${c.codigo}/roteadores`); } catch (e) { corpo.innerHTML = ''; return tratarErro(e); }
+      if (!rs.length) { corpo.innerHTML = vazioHtml('Aguardando o roteador', 'Configure o roteador do cliente com o endereço da aba "Como conectar". Em até 5 minutos ele aparece aqui.'); return; }
+      desenhar(rs[0]);
+    }
 
     async function roteador(corpo) {
       j.rodape.innerHTML = '';
@@ -251,7 +265,9 @@
         <div class="dado">${ic('wifi')}<div><small>Wi-Fi</small><strong></strong></div></div>
         <div class="dado">${ic(r.online ? 'online' : 'offline')}<div><small>Situação</small><strong>${r.online ? 'Online' : 'Offline'} · ${esc(haQuanto(r.ultimoContato))}</strong></div></div>
         <div class="dado">${ic('roteador')}<div><small>Roteador</small><strong>${esc(r.fabricante)} ${esc(r.modelo)}</strong></div></div>
-        <div class="dado">${ic('etiqueta')}<div><small>Serial</small><strong class="mono">${esc(r.serial)}</strong></div></div></div>
+        <div class="dado">${ic('etiqueta')}<div><small>Serial</small><strong class="mono">${esc(r.serial)}</strong></div></div>
+        <div class="dado">${ic('ip')}<div><small>IP de internet do roteador</small><strong class="mono">${esc(r.ip || '—')}</strong></div></div>
+        <div class="dado">${ic('usuario')}<div><small>Login PPPoE</small><strong class="mono">${esc(r.pppoe || '—')}</strong></div></div></div>
         <h4 class="secao">Trocar Wi-Fi (suporte)</h4>`;
       corpo.querySelector('strong').textContent = r.ssid || '—';
       const form = el('<form class="form" autocomplete="off"></form>');

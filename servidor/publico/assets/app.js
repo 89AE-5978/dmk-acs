@@ -22,6 +22,7 @@
     return r;
   }
 
+  DMK.definirTratarErro((e) => tratarErro(e));
   function tratarErro(e, form) {
     if (e.status === 401) return telaEntrar();
     if (e.desativado) { conteudo.innerHTML = vazioHtml('Acesso desativado', e.message, 'bloqueio'); menu.classList.add('oculto'); return; }
@@ -100,13 +101,23 @@
         <h2 class="reticencias"></h2>
         <span class="selo ${r.online ? 'ok' : 'desl'}">${r.online ? 'Conectado' : 'Sem contato'} · ${esc(haQuanto(r.ultimoContato))}</span>
         <p class="fraco reticencias">${esc(r.fabricante)} ${esc(r.modelo)}</p>
-        <div class="linha-botoes centro">
-          <button type="button" class="btn primario" data-wifi>${ic('wifi')}<span>Trocar Wi-Fi</span></button>
+        <div class="acoes-roteador">
+          <button type="button" class="btn primario" data-wifi>${ic('wifi')}<span>Wi-Fi</span></button>
+          <button type="button" class="btn" data-aparelhos>${ic('aparelho')}<span>Aparelhos</span></button>
+          <button type="button" class="btn" data-canal>${ic('canal')}<span>Canal</span></button>
           <button type="button" class="btn" data-reiniciar>${ic('reiniciar')}<span>Reiniciar</span></button>
         </div></section>`);
       c.querySelector('h2').textContent = r.ssid || '—';
       c.querySelector('[data-wifi]').addEventListener('click', () => trocarWifi(r));
       c.querySelector('[data-reiniciar]').addEventListener('click', () => reiniciar(r));
+      c.querySelector('[data-aparelhos]').addEventListener('click', () => {
+        const j = abrirJanela({ icone: 'aparelho', titulo: 'Aparelhos conectados', sub: 'Quem está usando a sua internet agora', tamanho: 'medio', rodape: ' ' });
+        DMK.desenharAparelhos(j.corpo, j.rodape, `../api/app/roteadores/${encodeURIComponent(r.id)}/aparelhos`);
+      });
+      c.querySelector('[data-canal]').addEventListener('click', () => {
+        const j = abrirJanela({ icone: 'canal', titulo: 'Canal do Wi-Fi', sub: 'Para melhorar o sinal perto de outras redes', tamanho: 'pequeno', rodape: ' ' });
+        DMK.desenharCanal(j.corpo, j.rodape, r, `../api/app/roteadores/${encodeURIComponent(r.id)}/canal`, () => { j.fechar(); carregar(); });
+      });
       conteudo.append(c);
     }
     if (eu.roteadores.some((r) => !r.online)) conteudo.append(el(`<p class="fraco pequeno centro">Sem contato agora? O roteador pode estar desligado. O que você mudar é aplicado assim que ele voltar.</p>`));

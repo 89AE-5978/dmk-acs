@@ -48,6 +48,7 @@
     document.querySelector('.app').replaceChildren(document.querySelector('.topo'), el(`<div class="bloqueio">${vazioHtml(titulo, texto, tipo)}</div>`));
   }
 
+  DMK.definirTratarErro((e) => tratarErro(e));
   function tratarErro(e) {
     if (e.status === 401) return bloquear('Sessão encerrada', e.message, 'bloqueio');
     if (e.desativado) return bloquear('Módulo ACS desativado', e.message, 'bloqueio');
@@ -76,6 +77,8 @@
       sub: `${r.modelo} · ${r.online ? 'online' : 'offline'} · último contato ${haQuanto(r.ultimoContato)}`,
       abas: [
         { id: 'wifi', rotulo: 'Wi-Fi', icone: 'wifi', desenhar: desenharWifi },
+        { id: 'canal', rotulo: 'Canal', icone: 'canal', desenhar: (corpo) => DMK.desenharCanal(corpo, j.rodape, r, `../api/provedor/roteadores/${encodeURIComponent(r.id)}/canal`, carregar) },
+        { id: 'aparelhos', rotulo: 'Aparelhos', icone: 'aparelho', desenhar: (corpo) => DMK.desenharAparelhos(corpo, j.rodape, `../api/provedor/roteadores/${encodeURIComponent(r.id)}/aparelhos`) },
         { id: 'roteador', rotulo: 'Roteador', icone: 'chip', desenhar: desenharRoteador },
       ],
       rodape: ' ',
@@ -121,7 +124,7 @@
         ${dado('usuario', 'Cliente', r.cliente)}${dado('etiqueta', 'Login PPPoE', r.pppoe, true)}
         ${dado('chip', 'Fabricante', r.fabricante)}${dado('roteador', 'Modelo', r.modelo)}
         ${dado('etiqueta', 'Serial', r.serial, true)}${dado('chip', 'Versão do firmware', r.versao)}
-        ${dado('ip', 'IP', r.ip, true)}${dado('relogio', 'Último contato', dataHora(r.ultimoContato))}
+        ${dado('ip', 'IP de internet do roteador', r.ip, true)}${dado('relogio', 'Último contato', dataHora(r.ultimoContato))}
         </div>`;
       j.rodape.innerHTML = '';
       const atualizar = el(`<button type="button" class="btn">${ic('atualizar')}<span>Ler dados agora</span></button>`);

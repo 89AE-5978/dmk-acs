@@ -6,7 +6,7 @@
  */
 module.exports = function rotasIntegracao(ctx) {
   const { rota, enviar, lerCorpo, banco, sessoes, CFG, VERSAO, Erro400, definirCookie, chaveProvedor, nbi, validarWifi, trocarWifi, reiniciar, guarda, log,
-    contas, estadoAcs, PROJECAO, paraTela, lerClientes, gravarClientes } = ctx;
+    contas, estadoAcs, PROJECAO, paraTela, lerClientes, gravarClientes, validarCanal, trocarCanal, lerAparelhos } = ctx;
 
   rota('GET', '/entrar', async (req, res, m, url) => {
     const d = sessoes.lerTicket(url.searchParams.get('ticket'));
@@ -132,6 +132,24 @@ module.exports = function rotasIntegracao(ctx) {
     const p = provedorAtivoDe({ provedor: url.searchParams.get('provedor') });
     const doc = await roteadorPorPppoe(p, url.searchParams.get('pppoe'));
     enviar(res, 200, paraTela(doc, lerClientes(p.id)));
+  });
+  // Canal do Wi-Fi: { provedor, pppoe, faixa: "24" | "5", canal: "auto" | número }
+  rota('POST', '/api/integracao/canal', async (req, res) => {
+    exigirIntegracao(req);
+    const d = await lerCorpo(req);
+    const p = provedorAtivoDe(d);
+    const doc = await roteadorPorPppoe(p, d.pppoe);
+    const atual = paraTela(doc)[String(d.faixa) === '5' ? 'canal5' : 'canal24'];
+    const canal = validarCanal(d.faixa, d.canal, atual);
+    guarda.registrar('integracao-canal', { provedor: p.id, roteador: doc._id, faixa: String(d.faixa), canal });
+    enviar(res, 200, { situacao: await trocarCanal(doc._id, String(d.faixa), canal) });
+  });
+  // Aparelhos conectados (lê do roteador na hora): ?provedor=starnet&pppoe=joao.silva
+  rota('GET', '/api/integracao/aparelhos', async (req, res, m, url) => {
+    exigirIntegracao(req);
+    const p = provedorAtivoDe({ provedor: url.searchParams.get('provedor') });
+    const doc = await roteadorPorPppoe(p, url.searchParams.get('pppoe'));
+    enviar(res, 200, await lerAparelhos(doc._id));
   });
   rota('POST', '/api/integracao/reiniciar', async (req, res) => {
     exigirIntegracao(req);

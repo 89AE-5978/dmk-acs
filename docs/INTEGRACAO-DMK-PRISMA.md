@@ -1,4 +1,4 @@
-# DMK ACS — integração com o DMK Prisma (API v1.2)
+# DMK ACS — integração com o DMK Prisma (API v1.3)
 
 Documento de referência para quem programa o lado do **DMK Prisma**. O DMK ACS gerencia os roteadores
 dos clientes por TR-069 (GenieACS por baixo) e o Prisma distribui o módulo para os provedores dele.
@@ -51,8 +51,10 @@ DMK Prisma (Central e empresas) ──HTTP local──> http://127.0.0.1:7580/ap
 | DELETE | `/api/integracao/provedores/:id` | Tira o provedor do ACS (empresa excluída). Os roteadores ficam sem dono |
 | PUT | `/api/integracao/provedores/:id/clientes` | Nomes na lista do módulo: `{ clientes: { "login.pppoe": "NOME" } }` — **substitui** a lista (até 5 MB) |
 | POST | `/api/integracao/ticket` | Link de entrada: `{ papel:"provedor", provedor:id, nome:"Operador" }` ou `{ papel:"central", nome }` → `{ caminho:"entrar?ticket=…" }` |
-| GET | `/api/integracao/roteador?provedor=id&pppoe=login` | Roteador do assinante: `{ id, serial, fabricante, modelo, versao, pppoe, cliente, ssid, ip, ultimoContato, online }` |
+| GET | `/api/integracao/roteador?provedor=id&pppoe=login` | Roteador do assinante: `{ id, serial, fabricante, modelo, versao, pppoe, cliente, ssid, ip, canal24, canal5, ultimoContato, online }` |
 | POST | `/api/integracao/wifi` | `{ provedor, pppoe, ssid, senha? }` → `{ situacao: "aplicado" \| "na-fila" }`. Senha vazia troca só o nome |
+| POST | `/api/integracao/canal` | `{ provedor, pppoe, faixa: "24" \| "5", canal: "auto" \| número }` → `{ situacao }` |
+| GET | `/api/integracao/aparelhos?provedor=id&pppoe=login` | Lê do roteador NA HORA quem está conectado: `{ situacao, lidoEm, aparelhos: [{ nome, mac, ip, conexao, wifi }] }` |
 | POST | `/api/integracao/reiniciar` | `{ provedor, pppoe }` → `{ situacao }` |
 
 Detalhes:
@@ -64,6 +66,14 @@ Detalhes:
   com o mesmo nome/senha (redes de mesmo nome).
 - `situacao: "aplicado"` = o roteador respondeu e gravou. `"na-fila"` = roteador não atendeu agora;
   o ACS aplica no próximo contato (até ~5 min com inform de 300 s). Mostre isso ao usuário.
+- `ip` = IP de internet do roteador (WAN: PPPoE/IP; pode ser CGNAT 100.64.x). Sem ele lido ainda, o IP de onde
+  o roteador fala com o ACS.
+- `canal24` / `canal5`: `{ auto, canal, possiveis: [números] }` ou `null` (roteador sem essa faixa ou ainda não
+  informou). `canal` = canal em uso agora. Para gravar use `"auto"` (recomendado) ou um número da lista
+  `possiveis` (vazia = o ACS aceita os canais padrão do Brasil: 1–13 em 2,4 GHz; 36–64, 100–140, 149–165 em 5 GHz).
+  Os aparelhos do cliente podem desconectar por alguns segundos.
+- `aparelhos`: lista pesada, lida só sob pedido (não guarde em loop). `conexao` = "Wi-Fi 2,4 GHz", "Wi-Fi 5 GHz",
+  "Wi-Fi" ou "Cabo"; `wifi` = true/false. Com `situacao: "na-fila"` vem a última leitura (`lidoEm`) ou lista vazia.
 - Tickets valem **60 s e uma vez só**. Abra no navegador `https://acs.danilodss.com.br/` + `caminho`
   (nova aba). Não use iframe: o cookie do ACS é do domínio dele.
 

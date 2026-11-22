@@ -13,7 +13,7 @@ const { avulsoPublico } = require('../lib/contas');
 module.exports = function rotasCentral(ctx) {
   const {
     rota, enviar, lerCorpo, exigirSessao, banco, contas, guarda, seg, sessoes, nbi, ipDe, log, CFG, VERSAO, estadoAcs, Erro400,
-    roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, lerAgora, enderecoAvulso, chaveAvulso, chaveProvedor, lerSegredo, paraTela, PROJECAO, lerClientes,
+    roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, lerAgora, enderecoAvulso, chaveAvulso, chaveProvedor, lerSegredo, paraTela, PROJECAO, lerClientes, validarCanal, trocarCanal, lerAparelhos, canalAtual,
   } = ctx;
 
   const central = (req) => exigirSessao(req, 'central');
@@ -132,9 +132,16 @@ module.exports = function rotasCentral(ctx) {
     enviar(res, 200, await roteadoresDaChave(chaveAvulso(m[1]), {}));
   });
   // Suporte: o admin também troca Wi-Fi / reinicia o roteador do cliente avulso
-  rota('POST', '/api/central/avulsos/([A-Z0-9]{6})/roteadores/([^/]+)/(wifi|reiniciar|atualizar)', async (req, res, m) => {
+  rota('POST', '/api/central/avulsos/([A-Z0-9]{6})/roteadores/([^/]+)/(wifi|reiniciar|atualizar|canal|aparelhos)', async (req, res, m) => {
     const s = central(req);
     const id = await roteadorDaChave(chaveAvulso(m[1]), decodeURIComponent(m[2]));
+    if (m[3] === 'aparelhos') return enviar(res, 200, await lerAparelhos(id));
+    if (m[3] === 'canal') {
+      const d = await lerCorpo(req);
+      const canal = validarCanal(d.faixa, d.canal, await canalAtual(id, String(d.faixa)));
+      guarda.registrar('canal-alterado', { por: s.nome, avulso: m[1], roteador: id, faixa: String(d.faixa), canal });
+      return enviar(res, 200, { situacao: await trocarCanal(id, String(d.faixa), canal) });
+    }
     if (m[3] === 'wifi') {
       const d = await lerCorpo(req);
       const w = validarWifi(d.ssid, d.senha);

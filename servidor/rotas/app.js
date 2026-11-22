@@ -7,7 +7,7 @@
  * Sessão de 30 dias no aparelho (cookie "dmkapp", separado do painel); conta desativada cai na hora.
  */
 module.exports = function rotasApp(ctx) {
-  const { rota, enviar, lerCorpo, contas, seg, guarda, sessoes, ipDe, cookie, definirCookie, Erro400, roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, chaveAvulso } = ctx;
+  const { rota, enviar, lerCorpo, contas, seg, guarda, sessoes, ipDe, cookie, definirCookie, Erro400, roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, chaveAvulso, validarCanal, trocarCanal, lerAparelhos, canalAtual } = ctx;
 
   function cliente(req) {
     const s = sessoes.obter(cookie(req, 'dmkapp'));
@@ -69,10 +69,17 @@ module.exports = function rotasApp(ctx) {
     enviar(res, 200, { ok: true });
   });
 
-  rota('POST', '/api/app/roteadores/([^/]+)/(wifi|reiniciar)', async (req, res, m) => {
+  rota('POST', '/api/app/roteadores/([^/]+)/(wifi|reiniciar|canal|aparelhos)', async (req, res, m) => {
     const { c } = cliente(req);
     if (c.trocarSenha) throw Object.assign(new Error('Troque a senha provisória antes de continuar.'), { status: 403 });
     const id = await roteadorDaChave(chaveAvulso(c.codigo), decodeURIComponent(m[1]));
+    if (m[2] === 'aparelhos') return enviar(res, 200, await lerAparelhos(id));
+    if (m[2] === 'canal') {
+      const d = await lerCorpo(req);
+      const canal = validarCanal(d.faixa, d.canal, await canalAtual(id, String(d.faixa)));
+      guarda.registrar('app-canal', { codigo: c.codigo, roteador: id, faixa: String(d.faixa), canal });
+      return enviar(res, 200, { situacao: await trocarCanal(id, String(d.faixa), canal) });
+    }
     if (m[2] === 'reiniciar') { guarda.registrar('app-reiniciar', { codigo: c.codigo, roteador: id }); return enviar(res, 200, { situacao: await reiniciar(id) }); }
     const d = await lerCorpo(req);
     const w = validarWifi(d.ssid, d.senha);

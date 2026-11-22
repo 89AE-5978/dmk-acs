@@ -42,6 +42,9 @@ const ICONES = {
   lua: '<path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/>',
   sair: '<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  cabo: '<path d="M7 3v4M12 3v4M17 3v4M5 7h14v6a7 7 0 0 1-14 0z"/><path d="M12 20v1"/>',
+  aparelho: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+  canal: '<path d="M3 20V10M8 20V4M13 20v-7M18 20V8"/><path d="M21 20H2"/>',
 };
 const ic = (nome, extra = '') => `<svg class="i ${extra}" viewBox="0 0 24 24" aria-hidden="true">${ICONES[nome] || ''}</svg>`;
 
@@ -453,4 +456,93 @@ function mascaraTelefone(input) {
   });
 }
 
-window.DMK = { $, esc, el, ic, iconesDaPagina, abrirMenu, telefoneBonito, mascaraTelefone, Tema, Som, avisar, api, haQuanto, dataHora, seletor, abrirJanela, confirmar, comoFunciona, criarLista, campo, erroNoCampo, botaoCarregando, copiar, vazioHtml };
+// ------------------------------------------------------------------ roteador: canal e aparelhos (provedor, DMK e app)
+const RES_ROTEADOR = {
+  aplicado: ['Aplicado no roteador', 'O roteador recebeu agora.'],
+  'na-fila': ['Na fila do roteador', 'Ele recebe no próximo contato (até 5 minutos).'],
+};
+
+/**
+ * Aba/janela "Canal": um seletor por faixa (2,4 e 5 GHz), Automático recomendado.
+ * r: roteador da tela (canal24/canal5 = { auto, canal, possiveis } ou null); url: POST do canal.
+ */
+function desenharCanal(corpo, rodape, r, url, aoSalvar) {
+  corpo.innerHTML = '';
+  rodape.innerHTML = '';
+  const faixas = [['24', '2,4 GHz', r.canal24], ['5', '5 GHz', r.canal5]].filter(([, , c]) => c);
+  if (!faixas.length) {
+    corpo.innerHTML = vazioHtml('Canal ainda não informado', 'O roteador ainda não mandou os canais. Eles chegam no próximo contato (até 5 minutos); depois abra de novo.');
+    return;
+  }
+  const PADRAO = { 24: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], 5: [36, 40, 44, 48, 149, 153, 157, 161, 165] };
+  const escolhas = {};
+  const form = el('<div class="form"></div>');
+  for (const [f, nome, c] of faixas) {
+    const lista = (c.possiveis.length ? c.possiveis : PADRAO[f]).filter((n) => (f === '5' ? n >= 36 : n <= 14));
+    const opcoes = [{ valor: 'auto', rotulo: 'Automático (recomendado)' }, ...lista.map((n) => ({ valor: String(n), rotulo: `Canal ${n}` }))];
+    escolhas[f] = c.auto ? 'auto' : String(c.canal || 'auto');
+    const sel = seletor(opcoes, escolhas[f], (v) => { escolhas[f] = v; });
+    const bloco = el(`<label class="rotulo"><span>Wi-Fi ${nome}</span></label>`);
+    bloco.append(sel.el, el(`<small class="ajuda">${c.auto ? `Automático, agora no canal ${esc(c.canal || '—')}` : `Fixo no canal ${esc(c.canal || '—')}`}</small>`));
+    form.append(bloco);
+  }
+  corpo.append(form, el(`<div class="aviso-caixa">${ic('canal')}<span>No automático o roteador escolhe sozinho o canal menos ocupado. Fixe um canal só se a internet sem fio estiver instável perto de outras redes. Os aparelhos podem desconectar por alguns segundos.</span></div>`));
+  const ok = el(`<button type="button" class="btn primario">${ic('enviar')}<span>Aplicar canal</span></button>`);
+  ok.addEventListener('click', async () => {
+    const mudou = faixas.filter(([f, , c]) => escolhas[f] !== (c.auto ? 'auto' : String(c.canal || 'auto')));
+    if (!mudou.length) return avisar('Nada mudou', 'Escolha outro canal para aplicar.', 'aviso');
+    botaoCarregando(ok, true);
+    try {
+      let situacao = 'aplicado';
+      for (const [f] of mudou) {
+        const x = await api('POST', url, { faixa: f, canal: escolhas[f] });
+        if (x.situacao !== 'aplicado') situacao = x.situacao;
+        const c = f === '5' ? r.canal5 : r.canal24;
+        c.auto = escolhas[f] === 'auto'; if (!c.auto) c.canal = Number(escolhas[f]);
+      }
+      avisar(...RES_ROTEADOR[situacao]);
+      aoSalvar?.();
+    } catch (e) { tratarErroPadrao(e); } finally { botaoCarregando(ok, false); }
+  });
+  rodape.append(ok);
+}
+
+/** Aba/janela "Aparelhos": lê do roteador na hora (POST url) e lista quem está conectado. */
+async function desenharAparelhos(corpo, rodape, url) {
+  rodape.innerHTML = '';
+  const atualizar = el(`<button type="button" class="btn">${ic('atualizar')}<span>Atualizar lista</span></button>`);
+  rodape.append(atualizar);
+  async function ler() {
+    corpo.innerHTML = '<p class="fraco carregando-linha">Perguntando ao roteador quem está conectado…</p>';
+    botaoCarregando(atualizar, true);
+    let x;
+    try { x = await api('POST', url); } catch (e) { corpo.innerHTML = ''; botaoCarregando(atualizar, false); return tratarErroPadrao(e); }
+    botaoCarregando(atualizar, false);
+    corpo.innerHTML = '';
+    if (x.situacao !== 'aplicado') corpo.append(el(`<div class="aviso-caixa">${ic('relogio')}<span>O roteador não respondeu agora. ${x.lidoEm ? `Mostrando a última leitura (${esc(dataHora(x.lidoEm))}).` : 'A lista chega no próximo contato dele (até 5 minutos).'}</span></div>`));
+    if (!x.aparelhos.length) {
+      if (x.situacao === 'aplicado' || x.lidoEm) corpo.append(el(vazioHtml('Nenhum aparelho conectado', 'O roteador não informou nenhum aparelho ligado a ele agora.')));
+      return;
+    }
+    const noWifi = x.aparelhos.filter((a) => a.wifi).length;
+    corpo.append(el(`<p class="resumo-aparelhos"><strong>${x.aparelhos.length}</strong> ${x.aparelhos.length === 1 ? 'aparelho' : 'aparelhos'} · <strong>${noWifi}</strong> no Wi-Fi${x.lidoEm ? ` · lido ${esc(haQuanto(x.lidoEm))}` : ''}</p>`));
+    const lista = el('<ul class="lista-aparelhos"></ul>');
+    for (const a of x.aparelhos) {
+      const li = el(`<li><span class="ico-aparelho ${a.wifi ? '' : 'cabo'}">${ic(a.wifi ? 'wifi' : 'cabo')}</span>
+        <div class="ap-nome"><strong></strong><small class="mono"></small></div>
+        <span class="ap-ip mono"></span><span class="chip-conexao">${esc(a.conexao)}</span></li>`);
+      li.querySelector('strong').textContent = a.nome || 'Aparelho sem nome';
+      li.querySelector('small').textContent = a.mac;
+      li.querySelector('small').dataset.ip = a.ip ? `${a.ip} · ` : '';   // no celular o IP vai junto do MAC
+      li.querySelector('.ap-ip').textContent = a.ip || '—';
+      lista.append(li);
+    }
+    corpo.append(lista);
+  }
+  atualizar.addEventListener('click', ler);
+  ler();
+}
+let tratarErroPadrao = (e) => avisar('Não deu certo', e.message, 'erro');
+function definirTratarErro(fn) { tratarErroPadrao = fn; }
+
+window.DMK = { $, esc, el, ic, iconesDaPagina, abrirMenu, telefoneBonito, mascaraTelefone, Tema, Som, avisar, api, haQuanto, dataHora, seletor, abrirJanela, confirmar, comoFunciona, criarLista, campo, erroNoCampo, botaoCarregando, copiar, vazioHtml, desenharCanal, desenharAparelhos, definirTratarErro, RES_ROTEADOR };

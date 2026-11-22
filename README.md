@@ -4,8 +4,8 @@ Módulo de **gerenciamento remoto de roteadores (TR-069)** para provedores, inte
 
 - **Admin DMK (painel público `/admin/`):** usuário + senha + app autenticador. Seções Provedores, Clientes avulsos, Segurança e Conexão (DMK Prisma).
 - **Central DMK (admin):** cadastra os provedores que usam o ACS, define o endereço do ACS de cada um, ativa e desativa o módulo.
-- **Clientes avulsos ("DMK Wi-Fi"):** gerenciamento sem provedor. O cliente ganha um endereço de ACS com código próprio (`<base>/c/CÓDIGO`) e o **app DMK Wi-Fi** (`/app/`, instalável no celular) para trocar nome e senha do Wi-Fi e reiniciar.
-- **Provedor:** vê os roteadores dos clientes dele em lista, troca **nome e senha do Wi-Fi** com dois campos, reinicia, e tem o passo a passo para conectar os roteadores.
+- **Clientes avulsos ("DMK Wi-Fi"):** gerenciamento sem provedor. O cliente ganha um endereço de ACS com código próprio (`<base>/c/CÓDIGO`) e o **app DMK Wi-Fi** (`/app/`, instalável no celular) para trocar nome e senha do Wi-Fi, ver os aparelhos conectados, trocar o canal e reiniciar.
+- **Provedor:** vê os roteadores dos clientes dele em lista, troca **nome e senha do Wi-Fi** com dois campos, troca o **canal** (2,4 e 5 GHz, automático recomendado), vê os **aparelhos conectados** (nome, IP, MAC, Wi-Fi 2,4/5 GHz ou cabo) e o **IP de internet** do roteador, reinicia, e tem o passo a passo para conectar os roteadores.
 - **Separação entre provedores:** cada provedor tem o seu endereço (ex.: `acs.starnet.com.br`). O roteador fica com o provedor pelo endereço do ACS gravado **nele**. Um provedor nunca vê nem comanda roteador de outro.
 - Por baixo roda o **GenieACS** (motor TR-069 de código aberto), que fica escondido: ninguém precisa usar a tela técnica dele.
 
@@ -26,12 +26,14 @@ O painel só lista e só comanda roteadores com a marca do provedor logado (conf
 
 ## Wi-Fi em qualquer modelo (parâmetros virtuais)
 
-O painel só conhece três coisas: `dmk_pppoe`, `dmk_wifi_ssid` e `dmk_wifi_senha` (parâmetros virtuais do GenieACS). Os scripts em `servidor/lib/scripts-genieacs.js` traduzem para o lugar certo de cada modelo:
+O painel só conhece estes parâmetros virtuais do GenieACS: `dmk_pppoe`, `dmk_wifi_ssid`, `dmk_wifi_senha`, `dmk_wan_ip` (IP de internet), `dmk_canal_24` / `dmk_canal_5` (canal por faixa: `auto|<atual>|<possíveis>`; grava `auto` ou o número) e `dmk_aparelhos` (lista de aparelhos em JSON, lida só sob pedido). Os scripts em `servidor/lib/scripts-genieacs.js` traduzem para o lugar certo de cada modelo:
 
 - TR-098 (`InternetGatewayDevice...WLANConfiguration.N`) e TR-181 (`Device.WiFi...`);
 - grava na rede principal **e nas de mesmo nome** (2,4 + 5 GHz iguais); rede de visitante fica de fora;
 - senha: grava só no campo que o modelo tem (`KeyPassphrase`, `PreSharedKey.1.KeyPassphrase` ou `PreSharedKey.1.PreSharedKey`). A leitura volta vazia, então a senha não fica guardada no banco do ACS.
 - O cliente é reconhecido pelo **login PPPoE** lido do roteador.
+- Canal: o 1º rádio de cada faixa (TR-098: faixa pelos canais possíveis, canal > 14 ou padrão a/ac/ax; TR-181: `OperatingFrequencyBand`); grava `AutoChannelEnable` e `Channel`.
+- Aparelhos: tabela de hosts + clientes associados ao Wi-Fi (faixa de cada um pela rede onde está).
 
 Comando para roteador que não atende na hora (desligado, atrás de CGNAT) fica na fila do ACS e é aplicado no próximo contato (inform a cada 5 min). Se o roteador **recusar** o comando, o painel mostra o motivo e limpa o comando.
 
@@ -91,7 +93,8 @@ O instalador recusa porta ocupada e diz quem está usando; todas podem ser troca
 ## Testes
 
 ```bash
-node testes/teste-servidor.js   # painel + GenieACS imitado: separação, ativar/desativar, Wi-Fi, recusa, tickets, integração
+node testes/teste-servidor.js   # painel + GenieACS imitado: separação, ativar/desativar, Wi-Fi, canal, aparelhos, recusa, tickets, integração
+node testes/teste-scripts.js    # parâmetros virtuais contra roteadores TR-098 e TR-181 imitados (IP, canais, aparelhos)
 node testes/teste-seguranca.js  # login, autenticador, bloqueios de conta/IP, anti-CSRF, clientes avulsos e app
 bash testes/teste-vps.sh        # atualizador e removedor numa VPS imitada (rollback, backup único, não toca no Prisma)
 ```

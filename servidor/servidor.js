@@ -104,6 +104,7 @@ const PROJECAO = [
   '_id', '_lastInform', '_registered', '_tags',
   '_deviceId._Manufacturer', '_deviceId._ProductClass', '_deviceId._SerialNumber',
   'VirtualParameters.dmk_pppoe', 'VirtualParameters.dmk_wifi_ssid',
+  'VirtualParameters.dmk_wan_ip', 'VirtualParameters.dmk_canal_24', 'VirtualParameters.dmk_canal_5',
   'InternetGatewayDevice.DeviceInfo.SoftwareVersion', 'Device.DeviceInfo.SoftwareVersion',
   'InternetGatewayDevice.ManagementServer.ConnectionRequestURL', 'Device.ManagementServer.ConnectionRequestURL',
 ];
@@ -144,6 +145,7 @@ function paraTela(doc, clientes = {}) {
   let ip = '';
   try { ip = cr ? new URL(cr).hostname : ''; } catch { /* sem IP */ }
   const pppoe = valor(doc, 'VirtualParameters.dmk_pppoe');
+  const wanIp = valor(doc, 'VirtualParameters.dmk_wan_ip');
   return {
     id: doc._id,
     serial: valor(doc, '_deviceId._SerialNumber'),
@@ -153,7 +155,9 @@ function paraTela(doc, clientes = {}) {
     pppoe,
     cliente: (pppoe && clientes[pppoe]) || '',
     ssid: valor(doc, 'VirtualParameters.dmk_wifi_ssid'),
-    ip,
+    ip: wanIp || ip,   // IP de internet do roteador (WAN); sem ele, o IP de onde o roteador fala com o ACS
+    canal24: lerCanal(valor(doc, 'VirtualParameters.dmk_canal_24')),
+    canal5: lerCanal(valor(doc, 'VirtualParameters.dmk_canal_5')),
     ultimoContato: ultimo ? ultimo.toISOString() : '',
     online: !!ultimo && Date.now() - ultimo.getTime() < CFG.onlineMin * 60e3,
   };
@@ -183,6 +187,60 @@ function validarWifi(ssid, senha) {
   return { ssid, senha };
 }
 
+// ---------------------------------------------------------------- canal do Wi-Fi
+// Valor do parâmetro virtual: "auto|<atual>|<possíveis>" ou "<n>|<n>|<possíveis>"; "" = sem essa faixa.
+const CANAIS_PADRAO = {
+  24: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+  5: [36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 149, 153, 157, 161, 165],
+};
+function listaDeCanais(texto) {
+  const r = [];
+  for (const parte of String(texto || '').split(/[,\s]+/)) {
+    const m = /^(\d+)(?:-(\d+))?$/.exec(parte);
+    if (!m) continue;
+    const a = Number(m[1]), b = m[2] ? Number(m[2]) : a;
+    for (let n = a; n <= b && r.length < 64; n++) r.push(n);
+  }
+  return [...new Set(r)].sort((x, y) => x - y);
+}
+function lerCanal(v) {
+  if (!v) return null;
+  // Logo depois de gravar o valor é só "auto" ou "<n>"; o formato completo volta na próxima leitura
+  if (!String(v).includes('|')) return { auto: v === 'auto', canal: v === 'auto' ? null : Number(v) || null, possiveis: [] };
+  const [cfg, atual, possiveis] = String(v).split('|');
+  return { auto: cfg === 'auto', canal: Number(atual) || null, possiveis: listaDeCanais(possiveis) };
+}
+/** Confere o canal pedido: "auto" ou um canal que o roteador aceita (ou o padrão do Brasil para a faixa). */
+function validarCanal(faixa, canal, atual) {
+  faixa = String(faixa);
+  if (!['24', '5'].includes(faixa)) throw new Erro400('Faixa inválida: use 24 (2,4 GHz) ou 5 (5 GHz).', 'faixa');
+  if (String(canal) === 'auto') return 'auto';
+  const n = Number(canal);
+  const validos = (atual && atual.possiveis.length ? atual.possiveis : CANAIS_PADRAO[faixa]).filter((x) => (faixa === '5' ? x >= 36 : x <= 14));
+  if (!Number.isInteger(n) || !validos.includes(n)) throw new Erro400(`Canal inválido para ${faixa === '5' ? '5' : '2,4'} GHz. Use: automático ou ${validos.join(', ')}.`, 'canal');
+  return n;
+}
+async function canalAtual(id, faixa) {
+  const [doc] = await nbi.dispositivos({ _id: id }, ['_id', `VirtualParameters.dmk_canal_${faixa}`]);
+  return doc ? lerCanal(valor(doc, `VirtualParameters.dmk_canal_${faixa}`)) : null;
+}
+const trocarCanal = (id, faixa, canal) => nbi.tarefa(id, { name: 'setParameterValues', parameterValues: [[`VirtualParameters.dmk_canal_${faixa}`, String(canal), 'xsd:string']] });
+
+/** Lê do roteador a lista de aparelhos conectados (sob pedido: é pesada) e devolve a lista guardada. */
+async function lerAparelhos(id) {
+  const situacao = await nbi.tarefa(id, { name: 'getParameterValues', parameterNames: ['VirtualParameters.dmk_aparelhos'] });
+  const [doc] = await nbi.dispositivos({ _id: id }, ['_id', 'VirtualParameters.dmk_aparelhos']);
+  const n = doc && doc.VirtualParameters && doc.VirtualParameters.dmk_aparelhos;
+  let lista = [];
+  try { lista = JSON.parse((n && n._value) || '[]'); } catch { lista = []; }
+  const CONEXAO = { 24: 'Wi-Fi 2,4 GHz', 5: 'Wi-Fi 5 GHz', wifi: 'Wi-Fi', cabo: 'Cabo' };
+  const aparelhos = (Array.isArray(lista) ? lista : []).map((a) => ({
+    nome: String(a.n || ''), mac: String(a.m || '').toUpperCase(), ip: String(a.i || ''),
+    conexao: CONEXAO[a.c] || 'Wi-Fi', wifi: a.c !== 'cabo',
+  })).sort((a, b) => (b.wifi - a.wifi) || (!a.nome - !b.nome) || a.nome.localeCompare(b.nome) || a.ip.localeCompare(b.ip, 'en', { numeric: true }));   // Wi-Fi primeiro; sem nome no fim
+  return { situacao, lidoEm: n && n._timestamp ? new Date(n._timestamp).toISOString() : '', aparelhos };
+}
+
 async function trocarWifi(id, { ssid, senha }) {
   const valores = [['VirtualParameters.dmk_wifi_ssid', ssid, 'xsd:string']];
   if (senha) valores.push(['VirtualParameters.dmk_wifi_senha', senha, 'xsd:string']);
@@ -190,7 +248,7 @@ async function trocarWifi(id, { ssid, senha }) {
 }
 const reiniciar = (id) => nbi.tarefa(id, { name: 'reboot' });
 async function lerAgora(id, provedor) {
-  const situacao = await nbi.tarefa(id, { name: 'getParameterValues', parameterNames: ['VirtualParameters.dmk_pppoe', 'VirtualParameters.dmk_wifi_ssid'] });
+  const situacao = await nbi.tarefa(id, { name: 'getParameterValues', parameterNames: ['VirtualParameters.dmk_pppoe', 'VirtualParameters.dmk_wifi_ssid', 'VirtualParameters.dmk_wan_ip', 'VirtualParameters.dmk_canal_24', 'VirtualParameters.dmk_canal_5'] });
   const [doc] = await nbi.dispositivos({ _id: id }, PROJECAO);
   return { situacao, roteador: doc ? paraTela(doc, lerClientes(provedor)) : null };
 }
@@ -297,6 +355,7 @@ const ctx = {
   CFG, VERSAO, log, nbi, banco, contas, guarda, sessoes, seg, scripts, estadoAcs, Erro400,
   rota, enviar, arquivo, lerCorpo, ipDe, cookie, definirCookie, exigirSessao, lerSegredo, codigoPrimeiroAcesso,
   roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, lerAgora, paraTela, lerClientes, gravarClientes, PROJECAO,
+  validarCanal, trocarCanal, lerAparelhos, canalAtual,
   enderecoAvulso, chaveAvulso, chaveProvedor,
 };
 

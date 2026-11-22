@@ -5,7 +5,7 @@
  * desativado pela Central, tudo é recusado na hora.
  */
 module.exports = function rotasProvedor(ctx) {
-  const { rota, enviar, lerCorpo, exigirSessao, banco, guarda, log, CFG, VERSAO, roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, lerAgora, chaveProvedor, lerClientes } = ctx;
+  const { rota, enviar, lerCorpo, exigirSessao, banco, guarda, log, CFG, VERSAO, roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, lerAgora, chaveProvedor, lerClientes, validarCanal, trocarCanal, lerAparelhos, canalAtual } = ctx;
 
   function provedorAtivo(req) {
     const s = exigirSessao(req, 'provedor');
@@ -41,6 +41,21 @@ module.exports = function rotasProvedor(ctx) {
     const id = await roteadorDaChave(chaveProvedor(p), decodeURIComponent(m[1]));
     guarda.registrar('roteador-reiniciado', { por: s.nome, provedor: p.id, roteador: id });
     enviar(res, 200, { situacao: await reiniciar(id) });
+  });
+  // Canal do Wi-Fi: { faixa: "24" | "5", canal: "auto" | número }
+  rota('POST', '/api/provedor/roteadores/([^/]+)/canal', async (req, res, m) => {
+    const { s, p } = provedorAtivo(req);
+    const id = await roteadorDaChave(chaveProvedor(p), decodeURIComponent(m[1]));
+    const d = await lerCorpo(req);
+    const canal = validarCanal(d.faixa, d.canal, await canalAtual(id, String(d.faixa)));
+    log(`Provedor ${p.id} (${s.nome}): canal ${d.faixa === '5' ? '5' : '2,4'} GHz do roteador ${id} -> ${canal}`);
+    guarda.registrar('canal-alterado', { por: s.nome, provedor: p.id, roteador: id, faixa: String(d.faixa), canal });
+    enviar(res, 200, { situacao: await trocarCanal(id, String(d.faixa), canal) });
+  });
+  rota('POST', '/api/provedor/roteadores/([^/]+)/aparelhos', async (req, res, m) => {
+    const { p } = provedorAtivo(req);
+    const id = await roteadorDaChave(chaveProvedor(p), decodeURIComponent(m[1]));
+    enviar(res, 200, await lerAparelhos(id));
   });
   rota('POST', '/api/provedor/roteadores/([^/]+)/atualizar', async (req, res, m) => {
     const { p } = provedorAtivo(req);
