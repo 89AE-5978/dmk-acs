@@ -20,6 +20,11 @@ if [ -n "$dominio" ]; then
 else
   painel="(sem domínio: só nesta VPS em http://127.0.0.1:$PORTA_PAINEL)"
 fi
+if grep -q '"ufw": \[ *\]' "$INSTALACAO" 2>/dev/null; then
+  portas="portas $PORTA_CWMP e $PORTA_FS (TCP): libere no firewall do provedor da VPS, se houver"
+else
+  portas="portas $PORTA_CWMP e $PORTA_FS (TCP) liberadas no firewall (ufw) para os roteadores"
+fi
 roteadores="${DMK_ACS_ENDERECO_AVULSOS:-http://<ip-da-vps>:$PORTA_CWMP}"
 chave="$(cat "$DADOS/segredo-integracao.txt" 2>/dev/null || echo '(o painel cria ao ligar)')"
 if [ -f "$DADOS/primeiro-acesso.txt" ]; then
@@ -33,12 +38,12 @@ cat <<EOF
   PRIMEIRO ACESSO ......... $primeiro
   App do cliente avulso ... $painel/app/
   ACS dos roteadores ...... $roteadores/<provedor>   (cliente avulso: $roteadores/c/<CÓDIGO>)
-                            portas $PORTA_CWMP e $PORTA_FS (TCP) liberadas para os roteadores
+                            $portas
 
   Ligar no DMK Prisma (Central > módulo ACS):
     Endereço do ACS ....... http://127.0.0.1:$PORTA_PAINEL      (mesma VPS do Prisma)
     Chave de integração ... $chave
-    (a chave também está em $DADOS/segredo-integracao.txt; não mande por chat)
+    (a chave também está em $DADOS/segredo-integracao.txt; só funciona de dentro da VPS)
 
   Atualizar / remover ..... curl -fsSL https://raw.githubusercontent.com/89AE-5978/dmk-acs/main/dmk-acs.sh | sudo bash
   Serviços ................ systemctl status 'dmk-acs-*'      Logs: journalctl -u dmk-acs-painel -f

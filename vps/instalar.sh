@@ -236,9 +236,13 @@ EOF
   fi
   if command -v certbot >/dev/null; then
     if [ -n "$EMAIL" ]; then conta=(-m "$EMAIL"); else conta=(--register-unsafely-without-email); fi
-    certbot --nginx -d "$DOMINIO" "${conta[@]}" --agree-tos --non-interactive --redirect >/dev/null 2>&1 \
-      && ok "HTTPS ativo (certificado do $DOMINIO)" \
-      || aviso "Não consegui o certificado agora (o DNS do $DOMINIO já aponta para esta VPS?). Depois rode: certbot --nginx -d $DOMINIO"
+    if certbot --nginx -d "$DOMINIO" "${conta[@]}" --agree-tos --non-interactive --redirect > "$CONFIG/certbot.log" 2>&1; then
+      ok "HTTPS ativo (certificado do $DOMINIO)"
+    else
+      aviso "Não consegui o certificado HTTPS agora. O que o certbot respondeu:"
+      grep -vE '^\s*$|^Saving debug|^Ask for help|^-+$' "$CONFIG/certbot.log" | tail -6 | sed 's/^/         /'
+      aviso "Depois de resolver, rode: certbot --nginx -d $DOMINIO --redirect"
+    fi
   else
     aviso "certbot não encontrado: o painel ficou só em HTTP. Instale o certbot e rode: certbot --nginx -d $DOMINIO"
   fi

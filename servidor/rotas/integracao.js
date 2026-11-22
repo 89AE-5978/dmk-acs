@@ -25,6 +25,10 @@ module.exports = function rotasIntegracao(ctx) {
   });
 
   function exigirIntegracao(req) {
+    // A API de integração é só servidor-a-servidor: o Prisma chama 127.0.0.1 direto. Pedido que passou
+    // pelo nginx do painel público (traz X-Real-IP / X-Forwarded-For) é recusado como se não existisse:
+    // mesmo quem tiver a chave não usa a API pela internet.
+    if (req.headers['x-real-ip'] || req.headers['x-forwarded-for']) throw Object.assign(new Error('Não encontrado.'), { status: 404 });
     const m = /^Bearer (.+)$/.exec(req.headers.authorization || '');
     if (!m || !sessoes.segredoConfere(m[1])) throw Object.assign(new Error('Integração não autorizada.'), { status: 401 });
   }

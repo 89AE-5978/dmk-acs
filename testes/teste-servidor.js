@@ -197,6 +197,8 @@ const nbiFalsa = http.createServer((req, res) => {
   const segredo = fs.readFileSync(path.join(pasta, 'segredo-integracao.txt'), 'utf8').trim();
   const prisma = navegador();
   assert.equal((await prisma('GET', '/api/integracao/provedores', null, { Authorization: 'Bearer errado' })).status, 401);
+  r = await prisma('GET', '/api/integracao/provedores', null, { Authorization: `Bearer ${segredo}`, 'X-Real-IP': '203.0.113.9' });
+  assert.equal(r.status, 404, 'pela internet (via nginx) a API de integração não existe, mesmo com a chave certa');
   r = await prisma('GET', '/api/integracao/provedores', null, { Authorization: `Bearer ${segredo}` });
   assert.deepEqual(r.json.map((p) => p.id).sort(), ['exemplo', 'starnet']);
   r = await prisma('POST', '/api/integracao/wifi', { provedor: 'exemplo', pppoe: 'starnet.joao', ssid: 'X', senha: '12345678' }, { Authorization: `Bearer ${segredo}` });

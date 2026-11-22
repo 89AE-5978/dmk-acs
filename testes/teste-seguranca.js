@@ -49,7 +49,7 @@ const nbiFalsa = http.createServer((req, res) => {
     const ck = {};
     return async (metodo, caminho, corpo, cab = {}) => {
       const cookies = Object.entries(ck).map(([k, v]) => `${k}=${v}`).join('; ');
-      const r = await fetch(base + caminho, { method: metodo, redirect: 'manual', headers: { 'X-Real-IP': ip, ...(corpo ? { 'Content-Type': 'application/json' } : {}), ...(cookies ? { Cookie: cookies } : {}), ...cab }, body: corpo ? JSON.stringify(corpo) : undefined });
+      const r = await fetch(base + caminho, { method: metodo, redirect: 'manual', headers: { ...(ip ? { 'X-Real-IP': ip } : {}), ...(corpo ? { 'Content-Type': 'application/json' } : {}), ...(cookies ? { Cookie: cookies } : {}), ...cab }, body: corpo ? JSON.stringify(corpo) : undefined });
       for (const sc of r.headers.getSetCookie?.() || []) { const [kv] = sc.split(';'); const [k, v] = kv.split('='); if (v) ck[k] = v; else delete ck[k]; }
       let json = null; try { json = await r.json(); } catch { /* sem json */ }
       return { status: r.status, json, cab: r.headers };
@@ -171,7 +171,7 @@ const nbiFalsa = http.createServer((req, res) => {
   r = await adm('POST', '/api/central/integracao/revelar', { codigo: seg.codigoTotp(segredo, seg.passoAtual()) });
   assert.equal(r.json.segredo, fs.readFileSync(path.join(pasta, 'segredo-integracao.txt'), 'utf8').trim());
   const segredoIntegracao = r.json.segredo;
-  const prisma = navegador('127.0.0.1');
+  const prisma = navegador(null);   // o Prisma chama 127.0.0.1 direto, sem passar pelo nginx
   r = await prisma('POST', '/api/integracao/ticket', { papel: 'central', nome: 'Prisma' }, { Authorization: `Bearer ${segredoIntegracao}` });
   await prisma('GET', '/' + r.json.caminho);
   assert.equal((await prisma('GET', '/api/central/resumo')).status, 200, 'Prisma abre a Central');
