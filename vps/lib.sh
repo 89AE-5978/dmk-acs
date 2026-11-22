@@ -51,6 +51,27 @@ carregar_config() {
 porta_ocupada() { [ -n "$(ss -Hltn "sport = :$1" 2>/dev/null)" ]; }
 quem_usa_porta() { ss -Hltnp "sport = :$1" 2>/dev/null | sed -E 's/.*users:\(\("([^"]+)".*/\1/' | head -1; }
 
+# npm do módulo: usa o do sistema se existir; se não (ex.: Node.js do Ubuntu sem o pacote npm), baixa o
+# npm para dentro de $PROGRAMAS/npm, sem instalar nada no sistema. Cache em $PROGRAMAS/.npm-cache (apagado
+# no fim), para não deixar sobra em /root.
+npm_modulo() {
+  local cli="$PROGRAMAS/npm/bin/npm-cli.js"
+  if ! command -v npm >/dev/null && [ ! -f "$cli" ]; then
+    info "npm não está no sistema: baixando o npm para dentro de $PROGRAMAS/npm"
+    local tmp v; tmp="$(mktemp -d)"
+    for v in 10.9.2 10.8.2; do
+      curl -fsSL --retry 2 -o "$tmp/npm.tgz" "https://registry.npmjs.org/npm/-/npm-$v.tgz" && break
+    done
+    [ -s "$tmp/npm.tgz" ] || { rm -rf "$tmp"; falhar "Não consegui baixar o npm (registry.npmjs.org)."; }
+    mkdir -p "$PROGRAMAS/npm"; tar -xzf "$tmp/npm.tgz" -C "$PROGRAMAS/npm" --strip-components=1; rm -rf "$tmp"
+  fi
+  local r=0
+  if command -v npm >/dev/null; then npm --cache "$PROGRAMAS/.npm-cache" "$@" || r=$?
+  else node "$cli" --cache "$PROGRAMAS/.npm-cache" "$@" || r=$?; fi
+  rm -rf "$PROGRAMAS/.npm-cache"
+  return "$r"
+}
+
 versao_node_ok() {
   command -v node >/dev/null || return 1
   local v; v="$(node -v | sed 's/^v//; s/\..*//')"

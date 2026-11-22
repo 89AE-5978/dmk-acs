@@ -57,7 +57,6 @@ esac
 ok "$PRETTY_NAME"
 versao_node_ok || falhar "Precisa do Node.js 18 ou mais novo (o mesmo do DMK Prisma). node -v: $(node -v 2>/dev/null || echo ausente)"
 ok "Node.js $(node -v)"
-command -v npm >/dev/null || falhar "npm não encontrado (vem junto com o Node.js)."
 for c in curl tar git ss; do command -v "$c" >/dev/null || falhar "Falta o comando $c."; done
 if [ -n "$DOMINIO" ]; then
   [[ "$DOMINIO" =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$ && "$DOMINIO" == *.* ]] || falhar "Domínio inválido: $DOMINIO"
@@ -130,7 +129,7 @@ ok "MongoDB $versao_mongo"
 titulo "GenieACS"
 mkdir -p "$PROGRAMAS/genieacs"
 echo '{ "name": "dmk-acs-genieacs", "private": true }' > "$PROGRAMAS/genieacs/package.json"
-npm install --prefix "$PROGRAMAS/genieacs" 'genieacs@1.2' --no-audit --no-fund --loglevel=error
+npm_modulo install --prefix "$PROGRAMAS/genieacs" 'genieacs@1.2' --no-audit --no-fund --loglevel=error
 ok "GenieACS $(node -p "require('$PROGRAMAS/genieacs/node_modules/genieacs/package.json').version")"
 
 # ------------------------------------------------------------------ painel

@@ -66,7 +66,7 @@ escrever_servicos
 
 if [ "$GENIE" -eq 1 ]; then
   info "Atualizando o GenieACS (série 1.2)"
-  npm install --prefix "$PROGRAMAS/genieacs" 'genieacs@1.2' --no-audit --no-fund --loglevel=error
+  npm_modulo install --prefix "$PROGRAMAS/genieacs" 'genieacs@1.2' --no-audit --no-fund --loglevel=error
   systemctl restart dmk-acs-cwmp dmk-acs-nbi dmk-acs-fs dmk-acs-ui
   for p in "$PORTA_CWMP" "$PORTA_NBI" "$PORTA_FS" "$PORTA_UI"; do esperar_porta "$p" 60 || falhar "GenieACS não voltou na porta $p: journalctl -u 'dmk-acs-*'"; done
   ok "GenieACS $(node -p "require('$PROGRAMAS/genieacs/node_modules/genieacs/package.json').version")"
