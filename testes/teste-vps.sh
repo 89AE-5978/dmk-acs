@@ -15,7 +15,8 @@ echo "[Unit]" > "$DMK_ACS_SYSTEMD/dmk-prisma.service"     # serviço de OUTRO si
 for c in useradd userdel pkill ufw; do printf '#!/bin/sh\necho "%s $*" >> "%s"\n' "$c" "$LOG" > "$T/bin/$c"; done
 cat > "$T/bin/id" <<'EOF'
 #!/bin/sh
-# o usuário do módulo "existe" nesta VPS de mentira
+# nesta VPS de mentira: somos root e o usuário do módulo existe
+[ "$1" = -u ] && [ $# -eq 1 ] && { echo 0; exit 0; }
 [ "$1" = dmkacs ] && exit 0
 exec /usr/bin/id "$@"
 EOF
