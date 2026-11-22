@@ -111,7 +111,9 @@
     });
     const inp = f.querySelector('[name="codigo"]');
     inp.classList.add('codigo-6'); inp.inputMode = 'numeric';
-    inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/g, '').slice(0, 6); });
+    inp.autocomplete = 'one-time-code';
+    // igual à entrada: o 6º dígito já confirma (o guarda de botão desativado evita envio em dobro)
+    inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/g, '').slice(0, 6); if (inp.value.length === 6) f.requestSubmit(); });
     inp.focus();
     enviarCom(b, f, async (d) => {
       const r = await api('POST', '../api/acesso/primeiro/concluir', { token, codigo: d.codigo });

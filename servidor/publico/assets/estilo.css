@@ -369,7 +369,7 @@ h4.secao:first-child { margin-top: 0; }
   .secao-btn { padding: 0 9px; }
 }
 @media (max-width: 720px) {
-  .lista-protecoes, .codigos-rec { grid-template-columns: minmax(0, 1fr); }
+  .lista-protecoes { grid-template-columns: minmax(0, 1fr); }   /* códigos de recuperação seguem em 2 colunas: cabem e o cartão não rola */
   .qr-caixa { flex-direction: column; }
 }
 a.btn { text-decoration: none; color: inherit; }

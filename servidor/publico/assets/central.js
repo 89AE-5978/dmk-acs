@@ -474,6 +474,7 @@
     </ol>`));
 
   irPara(secao);
-  carregar();
+  // F5 com a seção Conexão aberta: o formulário nasce antes do resumo chegar; redesenha quando chega
+  carregar().then(() => { if (secao === 'conexao') desenharConexao(); });
   setInterval(() => { if (!document.hidden && !document.querySelector('.fundo-modal')) carregar(); }, 30000);
 })();
