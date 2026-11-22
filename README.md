@@ -2,7 +2,9 @@
 
 Módulo de **gerenciamento remoto de roteadores (TR-069)** para provedores, integrado ao **DMK Prisma**.
 
+- **Admin DMK (painel público `/admin/`):** usuário + senha + app autenticador. Seções Provedores, Clientes avulsos, Segurança e Conexão (DMK Prisma).
 - **Central DMK (admin):** cadastra os provedores que usam o ACS, define o endereço do ACS de cada um, ativa e desativa o módulo.
+- **Clientes avulsos ("DMK Wi-Fi"):** gerenciamento sem provedor. O cliente ganha um endereço de ACS com código próprio (`<base>/c/CÓDIGO`) e o **app DMK Wi-Fi** (`/app/`, instalável no celular) para trocar nome e senha do Wi-Fi e reiniciar.
 - **Provedor:** vê os roteadores dos clientes dele em lista, troca **nome e senha do Wi-Fi** com dois campos, reinicia, e tem o passo a passo para conectar os roteadores.
 - **Separação entre provedores:** cada provedor tem o seu endereço (ex.: `acs.starnet.com.br`). O roteador fica com o provedor pelo endereço do ACS gravado **nele**. Um provedor nunca vê nem comanda roteador de outro.
 - Por baixo roda o **GenieACS** (motor TR-069 de código aberto), que fica escondido: ninguém precisa usar a tela técnica dele.
@@ -32,6 +34,18 @@ O painel só conhece três coisas: `dmk_pppoe`, `dmk_wifi_ssid` e `dmk_wifi_senh
 - O cliente é reconhecido pelo **login PPPoE** lido do roteador.
 
 Comando para roteador que não atende na hora (desligado, atrás de CGNAT) fica na fila do ACS e é aplicado no próximo contato (inform a cada 5 min). Se o roteador **recusar** o comando, o painel mostra o motivo e limpa o comando.
+
+## Segurança do painel público
+
+- Senha em **scrypt** (sal aleatório), nunca em texto; regra de senha forte (10+ e 3 tipos de caractere).
+- **App autenticador** (TOTP, RFC 6238) na entrada do admin, sem reuso de código; 8 **códigos de recuperação** de uso único.
+- **Primeiro acesso** só com o código que fica no servidor (`dados/primeiro-acesso.txt` e no log): ninguém da internet cria o admin antes de você.
+- **Bloqueio de conta**: 5 erros seguidos = 15 min (dobra a cada bloqueio, até 24 h). **Bloqueio de IP**: 10 erros em 15 min = 1 h (reincidente 24 h). Ritmo: 20 tentativas/min por IP. No nginx: 10 tentativas/min por IP nas rotas de entrada.
+- Mensagens genéricas (não revela se o usuário existe); 2ª etapa presa ao IP; sessão do admin cai com 30 min sem uso.
+- Cookies HttpOnly + SameSite=Strict (+ Secure em HTTPS); pedidos de outra origem recusados (anti-CSRF); CSP rígida; HSTS em HTTPS.
+- Ações sensíveis (ver/trocar a chave do Prisma, senha, códigos) pedem o autenticador na hora.
+- **Auditoria** em `dados/auditoria.log` (entradas, erros, bloqueios, trocas de Wi-Fi), sem senhas, com tamanho limitado.
+- Painel público: instalar com `--dominio=painel.seudominio --email=voce@dominio` (nginx + certificado HTTPS; o removedor apaga só o que é do módulo).
 
 ## Integração com o DMK Prisma
 
@@ -84,11 +98,13 @@ O instalador recusa porta ocupada e diz quem está usando; todas podem ser troca
 
 ```bash
 node testes/teste-servidor.js   # painel + GenieACS imitado: separação, ativar/desativar, Wi-Fi, recusa, tickets, integração
+node testes/teste-seguranca.js  # login, autenticador, bloqueios de conta/IP, anti-CSRF, clientes avulsos e app
 bash testes/teste-vps.sh        # atualizador e removedor numa VPS imitada (rollback, backup único, não toca no Prisma)
 ```
 
 ## Próximos passos
 
-- Senha de conexão (CWMP) por provedor, além do endereço.
+- Senha de conexão (CWMP) por provedor/cliente, além do endereço.
+- Recuperação da senha do app pelo WhatsApp (conector DMK).
 - Perfis por modelo para ONUs que fogem do padrão (testar com os modelos reais dos clientes).
 - Ligação com o cadastro de clientes do DMK Prisma (nome do cliente pelo PPPoE) e o menu do módulo no Prisma.

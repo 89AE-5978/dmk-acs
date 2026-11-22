@@ -290,3 +290,81 @@ h4.secao:first-child { margin-top: 0; }
   .filtro-linha > :nth-child(3) { grid-column: 1 / 3; }
   .filtro-linha > :nth-child(4) { grid-row: 1; grid-column: 3; }
 }
+
+/* ======================================================================== seções do admin */
+.barra .secoes { flex: 0 1 auto; min-width: 0; display: flex; gap: 4px; overflow-x: auto; padding: 3px; background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; }
+.secao-btn {
+  flex: none; display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 11px; border: 0; border-radius: 7px;
+  background: none; cursor: pointer; color: var(--suave); font-weight: 600; white-space: nowrap;
+}
+.secao-btn:hover { background: var(--hover); color: var(--tinta); }
+.secao-btn.ativa { background: var(--marca-suave); color: var(--marca); }
+.secao-btn .i { color: inherit; }
+.barra .fixos { flex: 1 1 300px; }
+.grupo-busca { flex: 1; min-width: 0; display: flex; gap: 8px; }
+.barra .rolam { flex: 0 1 auto; }
+.painel-sec { display: block; }
+.painel-rolagem { height: 100%; overflow-y: auto; padding: 14px 16px; }
+.lista-protecoes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
+.lista-protecoes li { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; }
+.lista-protecoes .i { color: var(--marca); margin-top: 1px; }
+.linha-botoes { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; }
+.linha-botoes > * { flex: none; }
+.linha-botoes.centro { justify-content: center; }
+.selo.espera { color: var(--aviso); background: color-mix(in srgb, var(--aviso) 13%, transparent); }
+.dados .inteiro { grid-column: 1 / -1; }
+.dados-entrega { margin: 12px 0 4px; }
+.codigos-rec { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 10px 0; }
+.codigos-rec code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 15px; text-align: center; padding: 8px; border: 1px dashed var(--linha-forte); border-radius: 8px; background: var(--fundo); letter-spacing: .06em; }
+.codigo-6 { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 20px !important; letter-spacing: .4em; text-align: center; }
+.codigo-rec { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+
+/* ======================================================================== tela de entrada (admin) */
+.tela-entrada { height: 100%; display: grid; place-items: center; padding: 16px; overflow-y: auto;
+  background: radial-gradient(1200px 500px at 50% -10%, color-mix(in srgb, var(--marca) 14%, transparent), transparent), var(--fundo); }
+.tema-canto { position: fixed; top: 12px; right: 12px; }
+.cartao-entrada { width: min(420px, 100%); background: var(--painel); border: 1px solid var(--linha); border-radius: 16px; box-shadow: var(--sombra-forte); padding: 22px; }
+.entrada-marca { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.entrada-marca h1 { margin: 0; font-size: 19px; }
+.entrada-marca p { margin: 0; color: var(--suave); font-size: 13px; }
+.chip-icone.grande { width: 44px; height: 44px; border-radius: 12px; }
+.chip-icone.grande svg.i { width: 24px; height: 24px; }
+.form-entrada { display: flex; flex-direction: column; gap: 10px; }
+.form-entrada h2 { margin: 0; font-size: 16px; }
+.form-entrada > p { margin: 0; font-size: 13px; }
+.btn.largo { width: 100%; height: 40px; margin-top: 4px; }
+.link-acao { border: 0; background: none; color: var(--marca); cursor: pointer; padding: 2px 0; font-size: 13px; text-align: left; }
+.link-acao:hover { text-decoration: underline; }
+.qr-caixa { display: flex; gap: 14px; align-items: center; padding: 10px; border: 1px solid var(--linha); border-radius: 10px; }
+.qr-caixa img { width: 150px; height: 150px; flex: none; border-radius: 6px; image-rendering: pixelated; }
+.qr-caixa > div { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.marcar { display: flex; gap: 8px; align-items: center; font-size: 13.5px; cursor: pointer; }
+.marcar input { width: 18px; height: 18px; accent-color: var(--marca); }
+.pequeno { font-size: 12.5px; }
+.centro { text-align: center; }
+
+/* ======================================================================== app do cliente (DMK Wi-Fi) */
+.corpo-app { background: var(--fundo); }
+.app-cliente { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+.topo-app { margin: 0; padding: 0 12px; padding-top: env(safe-area-inset-top); height: calc(56px + env(safe-area-inset-top)); }
+.conteudo-app { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.cartao-app { margin-top: 6vh; }
+.cartao-roteador {
+  width: min(440px, 100%); background: var(--painel); border: 1px solid var(--linha); border-radius: 18px; box-shadow: var(--sombra);
+  padding: 22px 18px 18px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; min-width: 0;
+}
+.cartao-roteador h2 { margin: 0; font-size: 24px; max-width: 100%; }
+.cartao-roteador p { margin: 2px 0 0; max-width: 100%; font-size: 13px; }
+.wifi-grande { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 6px; background: var(--marca-suave); color: var(--marca); }
+.wifi-grande svg.i { width: 46px; height: 46px; stroke-width: 2; }
+.cartao-roteador.off .wifi-grande { background: var(--perigo-suave); color: var(--perigo); }
+.cartao-roteador .linha-botoes { margin-top: 12px; }
+
+@media (max-width: 720px) {
+  .lista-protecoes, .codigos-rec { grid-template-columns: minmax(0, 1fr); }
+  .qr-caixa { flex-direction: column; }
+  .barra .secoes .secao-btn span { display: none; }   /* no celular as seções ficam só com o ícone */
+}
+a.btn { text-decoration: none; color: inherit; }
+a.btn.primario { color: #fff; }
+html[data-theme="dark"] a.btn.primario { color: #062018; }

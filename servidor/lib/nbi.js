@@ -38,8 +38,8 @@ function criarNbi(base) {
           resolve({ status: res.statusCode, json, texto });
         });
       });
-      req.setTimeout(timeoutMs, () => req.destroy(new Error('O ACS não respondeu a tempo.')));
-      req.on('error', (e) => reject(new Error(`ACS indisponível (${e.code || e.message}).`)));
+      req.setTimeout(timeoutMs, () => req.destroy(Object.assign(new Error('O ACS não respondeu a tempo.'), { status: 504 })));
+      req.on('error', (e) => reject(e.status ? e : Object.assign(new Error(`ACS indisponível (${e.code || e.message}).`), { status: 502 })));
       if (dados) req.write(dados);
       req.end();
     });
@@ -47,7 +47,7 @@ function criarNbi(base) {
 
   async function exigirOk(resposta, oque) {
     if (resposta.status >= 200 && resposta.status < 300) return resposta;
-    throw new Error(`${oque}: o ACS respondeu ${resposta.status}${resposta.texto ? ' - ' + resposta.texto.slice(0, 200) : ''}`);
+    throw Object.assign(new Error(`${oque}: o ACS respondeu ${resposta.status}${resposta.texto ? ' - ' + resposta.texto.slice(0, 200) : ''}`), { status: 502 });
   }
 
   return {

@@ -4,7 +4,8 @@
 # Regra de organização: TUDO do módulo fica em /opt/dmk-acs. Fora dela o módulo só cria:
 #   - /etc/systemd/system/dmk-acs-*.service e dmk-acs.target (serviços do sistema);
 #   - o usuário de sistema "dmkacs" (sem login), dono dos processos;
-#   - regras do firewall (ufw) para as portas públicas, se o ufw estiver ativo.
+#   - regras do firewall (ufw) para as portas públicas, se o ufw estiver ativo;
+#   - com --dominio: o site $NGINX/sites-available/dmk-acs.conf (+ link) e o certificado HTTPS dele.
 # O removedor desfaz exatamente essa lista. Nada do DMK Prisma, do nginx ou de outros sistemas
 # é tocado.
 
@@ -12,6 +13,7 @@ set -Eeuo pipefail
 
 RAIZ="${DMK_ACS_RAIZ:-/opt/dmk-acs}"
 SYSTEMD="${DMK_ACS_SYSTEMD:-/etc/systemd/system}"
+NGINX="${DMK_ACS_NGINX:-/etc/nginx}"   # só usado com --dominio (painel público)
 USUARIO="dmkacs"
 SERVICOS=(mongodb cwmp nbi fs ui painel)
 
@@ -146,7 +148,7 @@ EOF
 
 # Escreve instalacao.json (versão, portas, data) - lido pelo atualizador e pelo removedor
 gravar_instalacao() {
-  local versao="$1" ufw="$2"
+  local versao="$1" ufw="$2" dominio="${3:-}"
   cat > "$INSTALACAO" <<EOF
 {
   "modulo": "dmk-acs",
@@ -155,7 +157,8 @@ gravar_instalacao() {
   "raiz": "$RAIZ",
   "origem": "$(git -C "$CODIGO" remote get-url origin 2>/dev/null || echo local)",
   "portas": { "cwmp": $PORTA_CWMP, "fs": $PORTA_FS, "nbi": $PORTA_NBI, "ui": $PORTA_UI, "painel": $PORTA_PAINEL, "mongodb": $PORTA_MONGODB },
-  "ufw": [$ufw]
+  "ufw": [$ufw],
+  "dominio": "$dominio"
 }
 EOF
 }

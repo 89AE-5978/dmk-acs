@@ -44,7 +44,9 @@ if [ "$nova" = "$atual" ] && [ "$FORCAR" -eq 0 ] && [ "$GENIE" -eq 0 ]; then ok 
 # 2) Monta e TESTA a versão nova numa pasta temporária
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 git -C "$CODIGO" archive "$alvo" | tar -x -C "$tmp"
-node "$tmp/testes/teste-servidor.js" >/dev/null 2>&1 || falhar "A versão $nova não passou no teste. Nada foi alterado."
+for t in "$tmp"/testes/teste-*.js; do
+  node "$t" >/dev/null 2>&1 || falhar "A versão $nova não passou no teste $(basename "$t"). Nada foi alterado."
+done
 ok "Versão $nova testada"
 
 # 3) Backup único (regravado): painel em uso, configuração e provedores. O banco do ACS não muda
@@ -57,6 +59,7 @@ ok "Backup em $BACKUPS/ultimo.tar.gz (substitui o anterior)"
 
 # 4) Troca o painel (o código-fonte só passa para a versão nova depois que ela subir)
 ufw_atual="$(grep -o '"ufw": \[[^]]*\]' "$INSTALACAO" | sed 's/.*\[\(.*\)\]/\1/')"
+dominio_atual="$(sed -n 's/.*"dominio": "\([^"]*\)".*/\1/p' "$INSTALACAO")"
 rm -rf "$APP.anterior"; mv "$APP" "$APP.anterior"
 publicar_app "$tmp" "$APP"
 escrever_servicos
@@ -79,7 +82,7 @@ done
 if [ "$subiu" -eq 1 ]; then
   rm -rf "$APP.anterior"
   git -C "$CODIGO" reset --hard -q "$alvo"
-  gravar_instalacao "$nova" "$ufw_atual"
+  gravar_instalacao "$nova" "$ufw_atual" "$dominio_atual"
   titulo "DMK ACS atualizado: $atual -> $nova"
 else
   erro "A versão $nova não respondeu. Voltando para a $atual..."

@@ -183,7 +183,7 @@ function seletor(opcoes, valor, aoMudar, classe = '') {
 }
 
 // ------------------------------------------------------------------ janelas
-function abrirJanela({ icone = 'roteador', titulo, sub = '', tamanho = '', abas = null, corpo = '', rodape = '' }) {
+function abrirJanela({ icone = 'roteador', titulo, sub = '', tamanho = '', abas = null, corpo = '', rodape = '', fixa = false }) {
   const f = el(`<div class="fundo-modal"><div class="modal ${tamanho}" role="dialog" aria-modal="true">
     <div class="modal-topo"><span class="chip-icone">${ic(icone)}</span><div class="titulos"><h2></h2><p></p></div>
       <button type="button" class="fantasma" data-fechar aria-label="Fechar">${ic('fechar')}</button></div>
@@ -203,10 +203,12 @@ function abrirJanela({ icone = 'roteador', titulo, sub = '', tamanho = '', abas 
     fechar() { f.remove(); document.removeEventListener('keydown', tecla); janela.aoFechar?.(); },
     titulo(t, s) { f.querySelector('h2').textContent = t; const p = f.querySelector('.modal-topo p'); if (p && s != null) p.textContent = s; },
   };
-  const tecla = (e) => { if (e.key === 'Escape' && !menuAberto && document.querySelector('.fundo-modal:last-of-type') === f) janela.fechar(); };
+  // fixa: janela obrigatória (sem X, não fecha no Esc nem clicando fora), ex.: trocar senha provisória
+  const tecla = (e) => { if (!fixa && e.key === 'Escape' && !menuAberto && document.querySelector('.fundo-modal:last-of-type') === f) janela.fechar(); };
   document.addEventListener('keydown', tecla);
-  f.addEventListener('pointerdown', (e) => { if (e.target === f) janela.fechar(); });
-  f.querySelector('[data-fechar]').addEventListener('click', () => janela.fechar());
+  f.addEventListener('pointerdown', (e) => { if (!fixa && e.target === f) janela.fechar(); });
+  if (fixa) f.querySelector('[data-fechar]').remove();
+  else f.querySelector('[data-fechar]').addEventListener('click', () => janela.fechar());
   if (abas) {
     const barra = f.querySelector('.abas');
     janela.abas = {};
@@ -423,4 +425,25 @@ function erroNoCampo(form, nome, msg) {
   return true;
 }
 
-window.DMK = { $, esc, el, ic, iconesDaPagina, Tema, Som, avisar, api, haQuanto, dataHora, seletor, abrirJanela, confirmar, comoFunciona, criarLista, campo, erroNoCampo, botaoCarregando, copiar, vazioHtml };
+/** Telefone brasileiro: (11) 98888-7777 / (11) 3888-7777; aceita com 55 na frente. */
+function telefoneBonito(t) {
+  let d = String(t || '').replace(/\D/g, '');
+  if (d.length > 11 && d.startsWith('55')) d = d.slice(2);
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return d;
+}
+function mascaraTelefone(input) {
+  input.inputMode = 'tel';
+  input.addEventListener('input', () => {
+    const d = input.value.replace(/\D/g, '').slice(0, 13);
+    let v = d;
+    if (d.length > 2) v = `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    if (d.length > 7 && d.length <= 10) v = `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+    if (d.length === 11) v = `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+    if (d.length > 11) v = `+${d}`;
+    input.value = v;
+  });
+}
+
+window.DMK = { $, esc, el, ic, iconesDaPagina, abrirMenu, telefoneBonito, mascaraTelefone, Tema, Som, avisar, api, haQuanto, dataHora, seletor, abrirJanela, confirmar, comoFunciona, criarLista, campo, erroNoCampo, botaoCarregando, copiar, vazioHtml };

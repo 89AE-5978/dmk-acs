@@ -9,7 +9,8 @@
 #         --silencioso
 #
 # Remove SÓ o que o instalador criou: serviços dmk-acs-*, regras do firewall do módulo, usuário
-# dmkacs e a pasta /opt/dmk-acs. DMK Prisma, nginx e os outros sistemas da VPS não são tocados.
+# dmkacs, o site dmk-acs.conf do nginx e o certificado do domínio do painel (se instalado com
+# --dominio) e a pasta /opt/dmk-acs. DMK Prisma, nginx e os outros sistemas da VPS não são tocados.
 # Depois de remover, o DMK Prisma só deixa de mostrar o módulo ACS (o serviço some).
 AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
@@ -41,6 +42,7 @@ if [ "$CONFIRMADO" -eq 0 ]; then
     - pasta:    $RAIZ  (painel, GenieACS, MongoDB, provedores e o banco do ACS)
     - usuário:  $USUARIO
     - firewall: regras liberadas pelo módulo
+    - nginx:    site dmk-acs.conf e o certificado do painel público (se houver)
   NÃO é tocado: DMK Prisma, nginx, conector, outros sistemas.
   Os roteadores dos clientes continuam funcionando; só deixam de ser gerenciados.
 EOF
@@ -69,6 +71,17 @@ if [ -f "$INSTALACAO" ] && command -v ufw >/dev/null; then
   for regra in $(grep -o '"[0-9]*/tcp"' "$INSTALACAO" | tr -d '"'); do
     ufw delete allow "$regra" >/dev/null 2>&1 && diz ok "Firewall: regra $regra removida" || true
   done
+fi
+
+# 3b) Painel público: site do nginx e certificado do domínio do módulo (só os do DMK ACS)
+dominio="$( [ -f "$INSTALACAO" ] && sed -n 's/.*"dominio": "\([^"]*\)".*/\1/p' "$INSTALACAO" )"
+if [ -e "$NGINX/sites-available/dmk-acs.conf" ] || [ -e "$NGINX/sites-enabled/dmk-acs.conf" ] || [ -e "$NGINX/dmk-acs-proxy.inc" ]; then
+  rm -f "$NGINX/sites-enabled/dmk-acs.conf" "$NGINX/sites-available/dmk-acs.conf" "$NGINX/dmk-acs-proxy.inc"
+  if command -v nginx >/dev/null && nginx -t >/dev/null 2>&1; then nginx -s reload >/dev/null 2>&1 || true; fi
+  diz ok "nginx: site dmk-acs.conf removido"
+fi
+if [ -n "$dominio" ] && command -v certbot >/dev/null; then
+  certbot delete --cert-name "$dominio" --non-interactive >/dev/null 2>&1 && diz ok "Certificado de $dominio removido" || true
 fi
 
 # 4) Arquivos de serviço

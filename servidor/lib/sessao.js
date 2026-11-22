@@ -18,7 +18,7 @@ function criarSessoes(segredo, { duracaoHoras = 12 } = {}) {
   const sessoes = new Map();
   const usados = new Map();   // ticket só vale uma vez (até expirar)
 
-  const assinar = (corpo) => b64(crypto.createHmac('sha256', segredo).update(corpo).digest());
+  const assinar = (corpo) => b64(crypto.createHmac('sha256', segredo).update(corpo).digest());   // usa o segredo atual
 
   function gerarTicket(dados, validadeSeg = 60) {
     const corpo = b64(JSON.stringify({ ...dados, exp: Math.floor(Date.now() / 1000) + validadeSeg, n: b64(crypto.randomBytes(9)) }));
@@ -40,17 +40,33 @@ function criarSessoes(segredo, { duracaoHoras = 12 } = {}) {
     return { papel: d.papel, provedor: d.papel === 'provedor' ? d.provedor : null, nome: String(d.nome || '').slice(0, 80) };
   }
 
+  /**
+   * Cria a sessão. dados.duracaoMs = validade máxima (padrão 12 h); dados.inatividadeMs = cai
+   * sozinha depois desse tempo sem uso (o login do admin usa 30 min).
+   */
   function criar(dados) {
     const token = b64(crypto.randomBytes(32));
-    sessoes.set(token, { ...dados, expira: Date.now() + duracaoHoras * 3600e3 });
+    const agora = Date.now();
+    sessoes.set(token, { ...dados, criada: agora, ultimoUso: agora, expira: agora + (dados.duracaoMs || duracaoHoras * 3600e3) });
     return token;
   }
 
   function obter(token) {
     const s = token && sessoes.get(token);
     if (!s) return null;
-    if (s.expira < Date.now()) { sessoes.delete(token); return null; }
+    const agora = Date.now();
+    if (s.expira < agora || (s.inatividadeMs && agora - s.ultimoUso > s.inatividadeMs)) { sessoes.delete(token); return null; }
+    s.ultimoUso = agora;
     return s;
+  }
+
+  /** Encerra todas as sessões que batem com o filtro (ex.: depois de trocar a senha). */
+  function encerrarOnde(filtro) { for (const [k, v] of sessoes) if (filtro(v)) sessoes.delete(k); }
+
+  /** Troca o segredo de integração (tickets antigos deixam de valer na hora). */
+  function trocarSegredo(novo) {
+    if (!novo || novo.length < 32) throw new Error('Segredo curto.');
+    segredo = novo;
   }
 
   // Limpeza periódica (sessões e tickets vencidos)
@@ -67,7 +83,7 @@ function criarSessoes(segredo, { duracaoHoras = 12 } = {}) {
     return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
 
-  return { gerarTicket, lerTicket, criar, obter, encerrar: (t) => sessoes.delete(t), segredoConfere };
+  return { gerarTicket, lerTicket, criar, obter, encerrar: (t) => sessoes.delete(t), encerrarOnde, trocarSegredo, segredoConfere };
 }
 
 module.exports = { criarSessoes };

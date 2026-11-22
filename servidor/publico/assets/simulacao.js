@@ -13,7 +13,9 @@
   }
 
   const central = $('[data-central]');
-  central.innerHTML = `${ic('provedor')}<span>Entrar como Central DMK</span>`;
+  central.innerHTML = `${ic('link')}<span>Entrar pelo DMK Prisma (sem senha)</span>`;
+  $('[data-admin]').innerHTML = `${ic('cadeado')}<span>Entrar no painel do administrador</span>`;
+  $('[data-app]').innerHTML = `${ic('wifi')}<span>Abrir o app DMK Wi-Fi</span>`;
   central.addEventListener('click', () => entrar('central'));
 
   api('GET', 'simulacao/provedores').then((ps) => {

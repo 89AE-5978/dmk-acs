@@ -150,7 +150,7 @@ const nbiFalsa = http.createServer((req, res) => {
   r = await central('GET', '/api/central/resumo');
   const st = r.json.provedores.find((p) => p.id === 'starnet');
   assert.equal(st.total, 2); assert.equal(st.online, 1);
-  assert.equal(r.json.semProvedor.total, 1, 'roteador com endereço sem dono');
+  assert.equal(r.json.semDono.total, 1, 'roteador com endereço sem dono');
 
   // 5) Provedor: só vê os dele; não mexe em roteador de outro provedor
   const starnet = navegador();

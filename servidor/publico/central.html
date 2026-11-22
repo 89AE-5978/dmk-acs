@@ -3,25 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DMK ACS · Central</title>
+<meta name="robots" content="noindex, nofollow">
+<title>DMK ACS · Administração</title>
 <link rel="stylesheet" href="../assets/estilo.css">
 </head>
 <body>
 <div class="app">
   <header class="topo">
     <div class="marca"><span class="chip-icone" data-icone="roteador"></span>
-      <div class="reticencias"><h1 class="reticencias">Gerenciamento ACS</h1><div class="sub reticencias">Central DMK · provedores que usam o ACS</div></div></div>
+      <div class="reticencias"><h1 class="reticencias">DMK ACS</h1><div class="sub reticencias">Administração · roteadores, provedores e clientes</div></div></div>
     <div class="acoes"><span class="usuario reticencias" data-usuario></span>
-      <button type="button" class="btn ico" data-tema></button></div>
+      <button type="button" class="btn ico" data-tema></button>
+      <button type="button" class="btn ico" data-sair title="Sair"></button></div>
   </header>
 
   <section class="kpis" data-kpis></section>
 
   <div class="barra">
-    <div class="fixos">
-      <label class="busca"><span data-icone="pesquisar"></span><input type="search" placeholder="Pesquisar provedor, endereço…" data-busca aria-label="Pesquisar"></label>
-      <button type="button" class="btn" data-filtros></button>
-    </div>
+    <nav class="secoes" data-secoes role="tablist"></nav>
+    <div class="fixos" data-fixos></div>
     <div class="rolam">
       <button type="button" class="btn primario" data-novo></button>
       <button type="button" class="btn ico" data-atualizar title="Atualizar"></button>
@@ -29,7 +29,10 @@
     </div>
   </div>
 
-  <main class="cartao-lista" data-lista></main>
+  <main class="cartao-lista" data-sec="provedores"></main>
+  <main class="cartao-lista oculto" data-sec="avulsos"></main>
+  <main class="cartao-lista painel-sec oculto" data-sec="seguranca"></main>
+  <main class="cartao-lista painel-sec oculto" data-sec="conexao"></main>
 </div>
 <script src="../assets/base.js"></script>
 <script src="../assets/central.js"></script>

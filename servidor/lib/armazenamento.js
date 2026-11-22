@@ -45,6 +45,7 @@ function criarArmazenamento(pastaDados) {
     if (nome.length < 2 || nome.length > 80) throw new Erro400('Informe o nome do provedor (2 a 80 letras).', 'nome');
     const endereco = normalizarEndereco(entrada.enderecoAcs);
     if (endereco === null || !endereco) throw new Erro400('Endereço do ACS inválido. Ex.: acs.provedor.com.br ou http://acs.provedor.com.br:7547/', 'enderecoAcs');
+    if (/^\/c(\/|$)/i.test(new URL(endereco).pathname)) throw new Erro400('O caminho /c/ é reservado para os clientes avulsos. Use o domínio do provedor (ex.: acs.provedor.com.br).', 'enderecoAcs');
     const chave = chaveDoEndereco(endereco);
     const dono = existentes.find((p) => p.id !== idAtual && chaveDoEndereco(p.enderecoAcs) === chave);
     if (dono) throw new Erro400(`Esse endereço já é do provedor ${dono.nome}. Cada provedor precisa do seu.`, 'enderecoAcs');

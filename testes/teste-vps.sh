@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 T="$(mktemp -d)"; trap '/usr/bin/pkill -f "$T/" 2>/dev/null || true; rm -rf "$T"' EXIT
-export DMK_ACS_RAIZ="$T/opt/dmk-acs" DMK_ACS_SYSTEMD="$T/systemd"
+export DMK_ACS_RAIZ="$T/opt/dmk-acs" DMK_ACS_SYSTEMD="$T/systemd" DMK_ACS_NGINX="$T/nginx"
 RAIZ="$DMK_ACS_RAIZ"; LOG="$T/chamadas.log"
 falha() { echo "FALHOU: $1"; echo "--- chamadas:"; cat "$LOG" 2>/dev/null; exit 1; }
 
@@ -12,7 +12,10 @@ falha() { echo "FALHOU: $1"; echo "--- chamadas:"; cat "$LOG" 2>/dev/null; exit 
 mkdir -p "$T/bin" "$DMK_ACS_SYSTEMD" "$T/opt/DMK-Prisma"
 echo "nao mexer" > "$T/opt/DMK-Prisma/arquivo.txt"
 echo "[Unit]" > "$DMK_ACS_SYSTEMD/dmk-prisma.service"     # serviço de OUTRO sistema: tem que ficar
-for c in useradd userdel pkill ufw; do printf '#!/bin/sh\necho "%s $*" >> "%s"\n' "$c" "$LOG" > "$T/bin/$c"; done
+mkdir -p "$T/nginx/sites-available" "$T/nginx/sites-enabled"
+echo "server { server_name prisma; }" > "$T/nginx/sites-available/dmk-prisma.conf"; ln -s "$T/nginx/sites-available/dmk-prisma.conf" "$T/nginx/sites-enabled/dmk-prisma.conf"
+echo "# painel" > "$T/nginx/sites-available/dmk-acs.conf"; ln -s "$T/nginx/sites-available/dmk-acs.conf" "$T/nginx/sites-enabled/dmk-acs.conf"; echo "# inc" > "$T/nginx/dmk-acs-proxy.inc"
+for c in useradd userdel pkill ufw nginx certbot; do printf '#!/bin/sh\necho "%s $*" >> "%s"\n' "$c" "$LOG" > "$T/bin/$c"; done
 cat > "$T/bin/id" <<'EOF'
 #!/bin/sh
 # nesta VPS de mentira: somos root e o usuário do módulo existe
@@ -61,7 +64,7 @@ DMK_ACS_MODO=producao
 DMK_ACS_PORTA_MONGODB=27117
 EOF
 echo '{"provedores":[{"id":"starnet","nome":"STARNET","enderecoAcs":"http://acs.starnet.com.br:7547/","ativo":true}]}' > "$RAIZ/dados/provedores.json"
-gravar_instalacao 1.0.0 '"7547/tcp", "7567/tcp"'
+gravar_instalacao 1.0.0 '"7547/tcp", "7567/tcp"' painel.dmk.teste
 systemctl restart dmk-acs-painel
 for _ in $(seq 1 20); do [[ "$(saude_painel)" == *1.0.0* ]] && break; sleep 0.5; done
 [[ "$(saude_painel)" == *'"versao":"1.0.0"'* ]] || falha "painel 1.0.0 não subiu"
@@ -77,6 +80,7 @@ bash "$RAIZ/codigo-fonte/vps/atualizar.sh" > "$T/saida.txt" || { cat "$T/saida.t
 [[ "$(saude_painel)" == *'"versao":"1.0.1"'* ]] || falha "painel não ficou na 1.0.1"
 grep -q '"versao": "1.0.1"' "$RAIZ/instalacao.json" || falha "instalacao.json"
 grep -q '"7547/tcp", "7567/tcp"' "$RAIZ/instalacao.json" || falha "regras do firewall perdidas"
+grep -q '"dominio": "painel.dmk.teste"' "$RAIZ/instalacao.json" || falha "domínio do painel perdido na atualização"
 [[ "$(tar -tzf "$RAIZ/backups/ultimo.tar.gz")" == *dados/provedores.json* ]] || falha "backup sem provedores"
 [ "$(ls "$RAIZ/backups")" = "ultimo.tar.gz" ] || falha "backup acumulando"
 grep -q STARNET "$RAIZ/dados/provedores.json" || falha "provedores perdidos"
@@ -86,13 +90,13 @@ echo "ok  1.0.0 -> 1.0.1 (backup único, provedores preservados)"
 # 3) Versão que NÃO passa no teste: nada muda
 echo "throw new Error('quebrado')" >> "$T/trabalho/servidor/lib/sessao.js"; publicar 1.0.2
 if bash "$RAIZ/codigo-fonte/vps/atualizar.sh" > "$T/saida.txt" 2>&1; then falha "aceitou versão quebrada"; fi
-grep -q "não passou no teste. Nada foi alterado" "$T/saida.txt" || { cat "$T/saida.txt"; falha "mensagem do teste"; }
+grep -q "não passou no teste .*Nada foi alterado" "$T/saida.txt" || { cat "$T/saida.txt"; falha "mensagem do teste"; }
 [[ "$(saude_painel)" == *'"versao":"1.0.1"'* ]] || falha "deveria continuar na 1.0.1"
 echo "ok  1.0.2 quebrada recusada antes de trocar"
 
 # 4) Versão que passa no teste mas NÃO sobe em produção: volta sozinha para a anterior
 git -C "$T/trabalho" show HEAD~1:servidor/lib/sessao.js > "$T/trabalho/servidor/lib/sessao.js"   # volta o arquivo bom (da 1.0.1)
-sed -i "1a if (process.env.DMK_ACS_MODO === 'producao') process.exit(3);" "$T/trabalho/servidor/servidor.js"
+sed -i "1a if (require.main === module) process.exit(3);   // só quebra rodando como serviço" "$T/trabalho/servidor/servidor.js"
 publicar 1.0.3
 if bash "$RAIZ/codigo-fonte/vps/atualizar.sh" > "$T/saida.txt" 2>&1; then falha "não percebeu que a 1.0.3 não subiu"; fi
 grep -q "Voltou para a 1.0.1" "$T/saida.txt" || { cat "$T/saida.txt"; falha "rollback"; }
@@ -109,7 +113,10 @@ bash "$RAIZ/codigo-fonte/vps/remover.sh" --confirmar --salvar="$T/backup-final.t
 [[ "$(tar -tzf "$T/backup-final.tar.gz")" == *dados/provedores.json* ]] || falha "backup final"
 grep -q "ufw delete allow 7547/tcp" "$LOG" && grep -q "ufw delete allow 7567/tcp" "$LOG" || falha "regras do firewall"
 grep -q "userdel dmkacs" "$LOG" || falha "usuário"
-echo "ok  remoção completa (DMK Prisma e outros serviços intactos)"
+[ ! -e "$T/nginx/sites-available/dmk-acs.conf" ] && [ ! -e "$T/nginx/sites-enabled/dmk-acs.conf" ] && [ ! -e "$T/nginx/dmk-acs-proxy.inc" ] || falha "site do nginx do módulo ficou"
+[ -f "$T/nginx/sites-available/dmk-prisma.conf" ] && [ -L "$T/nginx/sites-enabled/dmk-prisma.conf" ] || falha "APAGOU O SITE DO DMK PRISMA NO NGINX"
+grep -q "certbot delete --cert-name painel.dmk.teste" "$LOG" || falha "certificado do painel não removido"
+echo "ok  remoção completa: serviços, nginx e certificado do módulo (DMK Prisma intacto)"
 
 # 6) Trava de segurança: removedor não apaga pasta com outro nome
 if DMK_ACS_RAIZ="$T/opt" bash "$REPO/vps/remover.sh" --confirmar >/dev/null 2>&1; then falha "apagaria $T/opt"; fi
