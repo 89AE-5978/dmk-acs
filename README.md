@@ -73,7 +73,7 @@ Se o módulo for removido da VPS, o Prisma só deixa de mostrar o menu (o servi�
 
 ## VPS: instalar, atualizar, remover (um comando só)
 
-Antes: crie no DNS um registro **A** do domínio do painel (ex.: `acs.dmksolutions.io`) apontando para o IP da VPS.
+Antes: crie no DNS um registro **A** do domínio do painel (ex.: `acs.dmksolutions.io`) apontando para o IP da VPS. Na Cloudflare, deixe como **DNS only (nuvem cinza)**: com o proxy (nuvem laranja) os roteadores não chegam na porta 7547 e o bloqueio de IP veria só o IP da Cloudflare; o comando recusa e explica.
 
 ```bash
 # >>> NA VPS (root) <<<

@@ -113,6 +113,13 @@ principal() {
   local ip dns
   ip="$(curl -fsS --max-time 5 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')"
   dns="$(getent ahostsv4 "$DOMINIO" 2>/dev/null | awk 'NR==1{print $1}')"
+  # Cloudflare com a nuvem laranja (proxy) no domínio: os roteadores não chegam na porta do ACS
+  # (o proxy só repassa 80/443 e algumas outras) e todo acesso ao painel viria do IP da Cloudflare,
+  # o que quebraria o bloqueio de IP suspeito. Tem que ser "DNS only" (nuvem cinza).
+  case "$dns" in
+    104.1[6-9].*|104.2[0-9].*|104.3[01].*|172.6[4-9].*|172.7[01].*|188.114.9[6-9].*|162.158.*|141.101.*|108.162.*|190.93.*|197.234.*|198.41.*|173.245.*|103.21.*|103.22.*|103.31.*)
+      falhar "O $DOMINIO está com a nuvem LARANJA da Cloudflare (proxy, IP $dns). No painel da Cloudflare > DNS, deixe o registro A de '${DOMINIO%%.*}' como 'DNS only' (nuvem cinza) apontando para $ip, espere 1 minuto e rode o comando de novo." ;;
+  esac
   if [ "$dns" = "$ip" ]; then ok "DNS: $DOMINIO aponta para esta VPS ($ip)"
   else aviso "DNS: $DOMINIO aponta para '${dns:-nada}', esta VPS é $ip. O HTTPS pode falhar agora (o instalador avisa e diz como refazer)."; fi
 
