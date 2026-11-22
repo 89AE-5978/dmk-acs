@@ -78,7 +78,11 @@ principal() {
   [[ "$DOMINIO" =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$ && "$DOMINIO" == *.* ]] \
     || falhar "Domínio inválido: '${DOMINIO}'. Rode de novo e digite só o nome, ex.: acs.dmksolutions.io"
 
-  # Programas que o módulo usa (só instala o que falta; nada é atualizado à força)
+  # Programas que o módulo usa (só instala o que falta; nada é atualizado à força).
+  # apt espera até 5 min se outra instalação do sistema estiver rodando (ex.: atualização automática)
+  # e mostra o andamento: nada de tela parada sem dizer o que está fazendo.
+  apt_instalar() { DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y -q --no-install-recommends "$@" 2>&1 | grep -E '^(Setting up|Configurando|E:)' | sed 's/^/       /' || true; }
+  info "Conferindo os programas da VPS"
   local faltam=()
   for c in git curl ss; do command -v "$c" >/dev/null || faltam+=("$c"); done
   command -v nginx >/dev/null || faltam+=(nginx)
@@ -93,24 +97,28 @@ principal() {
       case "$c" in ss) pacotes+=(iproute2) ;; certbot) pacotes+=(certbot python3-certbot-nginx) ;; *) pacotes+=("$c") ;; esac
     done
     info "Instalando o que falta: ${pacotes[*]}"
-    DEBIAN_FRONTEND=noninteractive apt-get update -qq >/dev/null
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends "${pacotes[@]}" >/dev/null
+    DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 update -qq || true
+    apt_instalar "${pacotes[@]}"
+    for c in "${faltam[@]}"; do command -v "$c" >/dev/null || falhar "Não consegui instalar: $c"; done
   fi
   # certbot sem o plugin do nginx (instalado por snap/pip não precisa; pelo apt precisa do pacote)
   if command -v apt-get >/dev/null && dpkg -s certbot >/dev/null 2>&1 && ! dpkg -s python3-certbot-nginx >/dev/null 2>&1; then
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends python3-certbot-nginx >/dev/null 2>&1 || true
+    info "Instalando o plugin do nginx para o certbot"
+    apt_instalar python3-certbot-nginx
   fi
 
   local nodev; nodev="$(node -v 2>/dev/null | sed 's/^v//; s/\..*//' || true)"
   if [ -z "$nodev" ] || [ "$nodev" -lt 18 ]; then
     info "Instalando o Node.js 20 (NodeSource)"
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >/dev/null 2>&1 || falhar "Não consegui preparar o Node.js 20."
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nodejs >/dev/null || falhar "Não consegui instalar o Node.js 20."
+    apt_instalar nodejs
+    command -v node >/dev/null || falhar "Não consegui instalar o Node.js 20."
   fi
   ok "Programas: git, nginx, certbot, Node.js $(node -v)"
 
   # DNS: avisa já (o certificado HTTPS só sai com o domínio apontando para esta VPS)
   local ip dns
+  info "Conferindo o DNS de $DOMINIO"
   ip="$(curl -fsS --max-time 5 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')"
   dns="$(getent ahostsv4 "$DOMINIO" 2>/dev/null | awk 'NR==1{print $1}')"
   # Cloudflare com a nuvem laranja (proxy) no domínio: os roteadores não chegam na porta do ACS
@@ -124,6 +132,7 @@ principal() {
   else aviso "DNS: $DOMINIO aponta para '${dns:-nada}', esta VPS é $ip. O HTTPS pode falhar agora (o instalador avisa e diz como refazer)."; fi
 
   # Código do GitHub dentro da pasta do módulo (origem das atualizações)
+  info "Baixando o código do GitHub"
   mkdir -p "$RAIZ"
   if [ -d "$CODIGO/.git" ]; then
     git -C "$CODIGO" fetch -q origin && git -C "$CODIGO" reset -q --hard origin/main
