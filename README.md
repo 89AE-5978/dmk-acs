@@ -49,27 +49,12 @@ Comando para roteador que não atende na hora (desligado, atrás de CGNAT) fica 
 
 ## Integração com o DMK Prisma
 
-O painel não tem usuário/senha próprios: quem entra é o DMK Prisma, que já autenticou a pessoa.
+Referência completa da API (criar/ativar/desativar provedores, tickets, Wi-Fi, reinício e situação do
+roteador pelo login PPPoE, nomes dos clientes): **[docs/INTEGRACAO-DMK-PRISMA.md](docs/INTEGRACAO-DMK-PRISMA.md)**.
 
-1. O DMK Prisma guarda o **segredo de integração** (`/opt/dmk-acs/dados/segredo-integracao.txt`).
-2. Para abrir o módulo, o Prisma pede um ticket (vale 60 s, uso único):
-   ```
-   POST http://127.0.0.1:7580/api/integracao/ticket
-   Authorization: Bearer <segredo>
-   {"papel":"central","nome":"Danilo"}            # Central DMK
-   {"papel":"provedor","provedor":"starnet","nome":"Operador"}   # empresa (provedor)
-   → {"caminho":"entrar?ticket=..."}
-   ```
-   e abre `<prefixo do módulo>/` + `caminho` (o Prisma faz proxy de `/modulos/acs/` para `127.0.0.1:7580`; as telas usam caminhos relativos e funcionam em qualquer prefixo).
-3. O Prisma mostra o módulo só para provedores ativos: `GET /api/integracao/provedores` (Bearer).
-4. Central do assinante / robô do WhatsApp trocam o Wi-Fi do cliente pelo login PPPoE:
-   ```
-   POST /api/integracao/wifi   (Bearer)
-   {"provedor":"starnet","pppoe":"starnet.joao","ssid":"CASA","senha":"12345678"}
-   ```
-5. Nome do cliente na lista: arquivo `dados/clientes.json` (`{"login.pppoe":"NOME"}`), mantido pela integração.
-
-Se o módulo for removido da VPS, o Prisma só deixa de mostrar o menu (o serviço some).
+Resumo: o Prisma chama `http://127.0.0.1:7580/api/integracao/…` com `Authorization: Bearer <chave>`
+(chave em `/opt/dmk-acs/dados/segredo-integracao.txt`; a API só responde por dentro da VPS) e abre o
+módulo do provedor em nova aba com `https://<domínio do painel>/entrar?ticket=…` (ticket de 60 s, uso único).
 
 ## VPS: instalar, atualizar, remover (um comando só)
 

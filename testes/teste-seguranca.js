@@ -191,6 +191,8 @@ const nbiFalsa = http.createServer((req, res) => {
   assert.equal(r.status, 400, 'sem endereço base ainda');
   r = await adm('PUT', '/api/central/config', { enderecoAvulsos: 'acs.dmk.com.br' });
   assert.equal(r.json.enderecoAvulsos, 'http://acs.dmk.com.br:7547');
+  r = await prisma('PUT', '/api/integracao/provedores/fibra-sul', { nome: 'Fibra Sul' }, { Authorization: `Bearer ${segredoIntegracao}` });
+  assert.equal(r.status, 201); assert.equal(r.json.enderecoAcs, 'http://acs.dmk.com.br:7547/fibra-sul/', 'Prisma cria o provedor no endereço base + /código');
   r = await adm('POST', '/api/central/provedores', { id: 'malandro', nome: 'Malandro', enderecoAcs: 'http://acs.dmk.com.br:7547/c/ABC123' });
   assert.equal(r.json.campo, 'enderecoAcs', 'provedor não pode usar /c/');
   r = await adm('POST', '/api/central/avulsos', { nome: 'Maria da Silva', telefone: '(11) 98888-7777', email: 'maria@ex.com', usuario: 'Maria.Silva' });

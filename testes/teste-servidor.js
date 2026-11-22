@@ -211,6 +211,35 @@ const nbiFalsa = http.createServer((req, res) => {
   r = await prisma('POST', '/api/integracao/ticket', { papel: 'provedor', provedor: 'exemplo', nome: 'Op' }, { Authorization: `Bearer ${segredo}` });
   assert.match(r.json.caminho, /^entrar\?ticket=/);
 
+  // 8b) Distribuição pelo Prisma: criar/ativar/desativar provedor, nomes dos clientes, roteador e reinício pelo PPPoE
+  const B = { Authorization: `Bearer ${segredo}` };
+  r = await prisma('GET', '/api/integracao/info', null, B);
+  assert.equal(r.status, 200); assert.ok(r.json.versao);
+  r = await prisma('GET', '/api/integracao/provedores', null, B);
+  const ex = r.json.find((p) => p.id === 'exemplo');
+  assert.ok(ex.roteadores >= 1 && typeof ex.online === 'number' && ex.enderecoAcs, 'lista traz endereço e contagem de roteadores');
+  r = await prisma('PUT', '/api/integracao/provedores/novo-net', { nome: 'Novo Net' }, B);
+  assert.equal(r.status, 400, 'sem endereço base nem enderecoAcs: recusa'); assert.equal(r.json.campo, 'enderecoAcs');
+  r = await prisma('PUT', '/api/integracao/provedores/novo-net', { nome: 'Novo Net', enderecoAcs: 'acs.novonet.com.br' }, B);
+  assert.equal(r.status, 201); assert.equal(r.json.enderecoAcs, 'http://acs.novonet.com.br:7547/'); assert.equal(r.json.ativo, true);
+  r = await prisma('PUT', '/api/integracao/provedores/novo-net', { nome: 'Novo Net', ativo: false }, B);
+  assert.equal(r.status, 200); assert.equal(r.json.ativo, false, 'repetir o PUT altera (desativa) sem duplicar');
+  assert.equal(r.json.enderecoAcs, 'http://acs.novonet.com.br:7547/', 'endereço mantido');
+  r = await prisma('POST', '/api/integracao/wifi', { provedor: 'novo-net', pppoe: 'x', ssid: 'Y' }, B);
+  assert.equal(r.status, 403, 'provedor desativado não troca Wi-Fi');
+  r = await prisma('PUT', '/api/integracao/provedores/exemplo/clientes', { clientes: { 'exemplo.ana': 'ANA PAULA SOUZA' } }, B);
+  assert.equal(r.json.clientes, 1);
+  r = await prisma('GET', '/api/integracao/roteador?provedor=exemplo&pppoe=exemplo.ana', null, B);
+  assert.equal(r.status, 200); assert.equal(r.json.cliente, 'ANA PAULA SOUZA'); assert.equal(r.json.pppoe, 'exemplo.ana');
+  r = await prisma('GET', '/api/integracao/roteador?provedor=starnet&pppoe=exemplo.ana', null, B);
+  assert.equal(r.status, 404, 'login de outro provedor não aparece');
+  r = await prisma('POST', '/api/integracao/reiniciar', { provedor: 'exemplo', pppoe: 'exemplo.ana' }, B);
+  assert.equal(r.status, 200); assert.equal(tarefas.at(-1).name, 'reboot');
+  r = await prisma('DELETE', '/api/integracao/provedores/novo-net', null, B);
+  assert.equal(r.status, 200);
+  assert.equal((await prisma('GET', '/api/integracao/provedores/novo-net', null, B)).status, 404);
+  assert.equal((await prisma('PUT', '/api/integracao/provedores/novo-net', { nome: 'X', enderecoAcs: 'a.b.com' }, { Authorization: 'Bearer errado' })).status, 401);
+
   // 9) Páginas e segurança
   r = await fetch(base + '/provedor/');
   assert.match(r.headers.get('content-security-policy'), /frame-ancestors 'self'/);

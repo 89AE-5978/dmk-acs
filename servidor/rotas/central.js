@@ -13,7 +13,7 @@ const { avulsoPublico } = require('../lib/contas');
 module.exports = function rotasCentral(ctx) {
   const {
     rota, enviar, lerCorpo, exigirSessao, banco, contas, guarda, seg, sessoes, nbi, ipDe, log, CFG, VERSAO, estadoAcs, Erro400,
-    roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, lerAgora, enderecoAvulso, chaveAvulso, chaveProvedor, lerSegredo, paraTela, PROJECAO,
+    roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, lerAgora, enderecoAvulso, chaveAvulso, chaveProvedor, lerSegredo, paraTela, PROJECAO, lerClientes,
   } = ctx;
 
   const central = (req) => exigirSessao(req, 'central');
@@ -76,7 +76,7 @@ module.exports = function rotasCentral(ctx) {
     central(req);
     const p = banco.obter(m[1]);
     if (!p) return enviar(res, 404, { erro: 'Provedor não encontrado.' });
-    enviar(res, 200, await roteadoresDaChave(chaveProvedor(p)));
+    enviar(res, 200, await roteadoresDaChave(chaveProvedor(p), lerClientes(p.id)));
   });
 
   // ---------------------------------------------------------------- clientes avulsos

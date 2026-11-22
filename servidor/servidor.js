@@ -115,10 +115,27 @@ function valor(doc, caminho) {
   return n == null || typeof n === 'object' ? '' : String(n);
 }
 
-function lerClientes() {
-  // Nome do cliente pelo login PPPoE (provedores). Na simulação vem de dados/clientes.json; em
-  // produção o DMK Prisma mantém esse arquivo pela integração.
-  try { return JSON.parse(fs.readFileSync(path.join(CFG.dados, 'clientes.json'), 'utf8')); } catch { return {}; }
+/**
+ * Nome do cliente pelo login PPPoE (lista dos provedores). O DMK Prisma mantém isso pela integração
+ * (PUT /api/integracao/provedores/:id/clientes), guardado por provedor em dados/clientes.json:
+ *   { "porProvedor": { "starnet": { "joao.silva": "JOÃO DA SILVA" } } }
+ * Entradas soltas no topo do arquivo (formato antigo/simulação) valem para todos.
+ */
+function lerArquivoClientes() {
+  try { return JSON.parse(fs.readFileSync(path.join(CFG.dados, 'clientes.json'), 'utf8')) || {}; } catch { return {}; }
+}
+function lerClientes(provedor) {
+  const d = lerArquivoClientes();
+  const soltos = Object.fromEntries(Object.entries(d).filter(([, v]) => typeof v === 'string'));
+  return provedor ? { ...soltos, ...((d.porProvedor || {})[provedor] || {}) } : soltos;
+}
+function gravarClientes(provedor, mapa) {
+  const d = lerArquivoClientes();
+  d.porProvedor = d.porProvedor || {};
+  if (mapa) d.porProvedor[provedor] = mapa; else delete d.porProvedor[provedor];
+  const arq = path.join(CFG.dados, 'clientes.json');
+  fs.writeFileSync(arq + '.tmp', JSON.stringify(d), { mode: 0o600 });
+  fs.renameSync(arq + '.tmp', arq);
 }
 
 function paraTela(doc, clientes = {}) {
@@ -172,10 +189,10 @@ async function trocarWifi(id, { ssid, senha }) {
   return nbi.tarefa(id, { name: 'setParameterValues', parameterValues: valores });
 }
 const reiniciar = (id) => nbi.tarefa(id, { name: 'reboot' });
-async function lerAgora(id) {
+async function lerAgora(id, provedor) {
   const situacao = await nbi.tarefa(id, { name: 'getParameterValues', parameterNames: ['VirtualParameters.dmk_pppoe', 'VirtualParameters.dmk_wifi_ssid'] });
   const [doc] = await nbi.dispositivos({ _id: id }, PROJECAO);
-  return { situacao, roteador: doc ? paraTela(doc, lerClientes()) : null };
+  return { situacao, roteador: doc ? paraTela(doc, lerClientes(provedor)) : null };
 }
 
 // Endereço do ACS de um cliente avulso: <base>/c/<CÓDIGO>
@@ -221,10 +238,10 @@ function arquivo(req, res, nome) {
   });
 }
 
-function lerCorpo(req) {
+function lerCorpo(req, limite = 64 * 1024) {
   return new Promise((resolve, reject) => {
     let tam = 0; const partes = [];
-    req.on('data', (c) => { tam += c.length; if (tam > 64 * 1024) { reject(new Erro400('Pedido grande demais.')); req.destroy(); } else partes.push(c); });
+    req.on('data', (c) => { tam += c.length; if (tam > limite) { reject(new Erro400('Pedido grande demais.')); req.destroy(); } else partes.push(c); });
     req.on('end', () => {
       if (!partes.length) return resolve({});
       try { resolve(JSON.parse(Buffer.concat(partes).toString('utf8'))); } catch { reject(new Erro400('JSON inválido.')); }
@@ -279,7 +296,7 @@ function origemConfere(req) {
 const ctx = {
   CFG, VERSAO, log, nbi, banco, contas, guarda, sessoes, seg, scripts, estadoAcs, Erro400,
   rota, enviar, arquivo, lerCorpo, ipDe, cookie, definirCookie, exigirSessao, lerSegredo, codigoPrimeiroAcesso,
-  roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, lerAgora, paraTela, lerClientes, PROJECAO,
+  roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, lerAgora, paraTela, lerClientes, gravarClientes, PROJECAO,
   enderecoAvulso, chaveAvulso, chaveProvedor,
 };
 

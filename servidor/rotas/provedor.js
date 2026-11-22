@@ -5,7 +5,7 @@
  * desativado pela Central, tudo é recusado na hora.
  */
 module.exports = function rotasProvedor(ctx) {
-  const { rota, enviar, lerCorpo, exigirSessao, banco, guarda, log, CFG, VERSAO, roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, lerAgora, chaveProvedor } = ctx;
+  const { rota, enviar, lerCorpo, exigirSessao, banco, guarda, log, CFG, VERSAO, roteadoresDaChave, roteadorDaChave, validarWifi, trocarWifi, reiniciar, lerAgora, chaveProvedor, lerClientes } = ctx;
 
   function provedorAtivo(req) {
     const s = exigirSessao(req, 'provedor');
@@ -25,7 +25,7 @@ module.exports = function rotasProvedor(ctx) {
   });
   rota('GET', '/api/provedor/roteadores', async (req, res) => {
     const { p } = provedorAtivo(req);
-    enviar(res, 200, await roteadoresDaChave(chaveProvedor(p)));
+    enviar(res, 200, await roteadoresDaChave(chaveProvedor(p), lerClientes(p.id)));
   });
   rota('POST', '/api/provedor/roteadores/([^/]+)/wifi', async (req, res, m) => {
     const { s, p } = provedorAtivo(req);
@@ -45,6 +45,6 @@ module.exports = function rotasProvedor(ctx) {
   rota('POST', '/api/provedor/roteadores/([^/]+)/atualizar', async (req, res, m) => {
     const { p } = provedorAtivo(req);
     const id = await roteadorDaChave(chaveProvedor(p), decodeURIComponent(m[1]));
-    enviar(res, 200, await lerAgora(id));
+    enviar(res, 200, await lerAgora(id, p.id));
   });
 };
