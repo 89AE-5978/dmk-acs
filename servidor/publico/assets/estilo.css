@@ -85,8 +85,11 @@ svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor;
 /* Barra: Pesquisar + Filtros presos; os outros botões rolam de lado */
 .barra { flex: none; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .barra .fixos { flex: 0 1 420px; min-width: 200px; display: flex; gap: 8px; }
-.barra .rolam { flex: 1 1 auto; min-width: 0; display: flex; gap: 8px; overflow-x: auto; justify-content: flex-end; }
+.barra .rolam { flex: 1 1 auto; min-width: 0; display: flex; gap: 8px; overflow-x: auto; }
 .barra .rolam > * { flex: none; }
+/* Encosta à direita com margem automática (e não justify-content:flex-end): se não couber, a
+   fileira rola de verdade a partir do primeiro botão, sem esconder o começo. */
+.barra .rolam > :first-child:not(.oculto), .barra .rolam > .oculto + * { margin-left: auto; }
 .busca { flex: 1; min-width: 0; position: relative; display: flex; align-items: center; }
 .busca svg.i { position: absolute; left: 11px; color: var(--suave); pointer-events: none; }
 
@@ -303,6 +306,7 @@ h4.secao:first-child { margin-top: 0; }
 .barra .fixos { flex: 1 1 300px; }
 .grupo-busca { flex: 1; min-width: 0; display: flex; gap: 8px; }
 .barra .rolam { flex: 0 1 auto; }
+.barra .fixos.oculto ~ .rolam { flex-grow: 1; }   /* seção sem busca: botões encostam à direita */
 .painel-sec { display: block; }
 .painel-rolagem { height: 100%; overflow-y: auto; padding: 14px 16px; }
 .lista-protecoes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
@@ -360,11 +364,15 @@ h4.secao:first-child { margin-top: 0; }
 .cartao-roteador.off .wifi-grande { background: var(--perigo-suave); color: var(--perigo); }
 .cartao-roteador .linha-botoes { margin-top: 12px; }
 
+@media (max-width: 1100px) {
+  .barra .secoes .secao-btn span { display: none; }   /* tela menor: seções só com o ícone (nome no title) */
+  .secao-btn { padding: 0 9px; }
+}
 @media (max-width: 720px) {
   .lista-protecoes, .codigos-rec { grid-template-columns: minmax(0, 1fr); }
   .qr-caixa { flex-direction: column; }
-  .barra .secoes .secao-btn span { display: none; }   /* no celular as seções ficam só com o ícone */
 }
 a.btn { text-decoration: none; color: inherit; }
 a.btn.primario { color: #fff; }
 html[data-theme="dark"] a.btn.primario { color: #062018; }
+.modal-corpo .aviso-caixa + .form { margin-top: 10px; }

@@ -30,6 +30,7 @@ module.exports = function rotasAcesso(ctx) {
   const igual = (a, b) => { const x = Buffer.from(String(a)); const y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 
   rota('GET', '/api/acesso/estado', async (req, res) => {
+    codigoPrimeiroAcesso();   // sem admin: garante que o código exista no servidor enquanto a tela pede
     enviar(res, 200, { temAdmin: contas.temAdmin(), simulacao: CFG.simulacao });
   });
 

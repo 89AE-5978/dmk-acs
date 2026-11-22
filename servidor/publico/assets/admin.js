@@ -33,6 +33,7 @@
 
   const enviarCom = (b, f, fn) => f.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (b.disabled) return;   // já enviando: ignora o 2º envio (ex.: envio automático no 6º dígito + Enter)
     botaoCarregando(b, true);
     try { await fn(Object.fromEntries(new FormData(f))); } catch (err) {
       botaoCarregando(b, false);

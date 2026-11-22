@@ -36,7 +36,7 @@
     buscas[s.id] = { input: grupo.querySelector('input'), filtros: grupo.querySelector('button'), grupo };
   }
   for (const s of SECOES) {
-    const b = el(`<button type="button" class="secao-btn" role="tab" data-ir="${s.id}">${ic(s.icone)}<span>${esc(s.rotulo)}</span></button>`);
+    const b = el(`<button type="button" class="secao-btn" role="tab" data-ir="${s.id}" title="${esc(s.rotulo)}">${ic(s.icone)}<span>${esc(s.rotulo)}</span></button>`);
     b.addEventListener('click', () => irPara(s.id));
     $('[data-secoes]').append(b);
   }

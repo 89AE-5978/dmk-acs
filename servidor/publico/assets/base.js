@@ -41,6 +41,7 @@ const ICONES = {
   sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   lua: '<path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/>',
   sair: '<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
 };
 const ic = (nome, extra = '') => `<svg class="i ${extra}" viewBox="0 0 24 24" aria-hidden="true">${ICONES[nome] || ''}</svg>`;
 
@@ -207,6 +208,12 @@ function abrirJanela({ icone = 'roteador', titulo, sub = '', tamanho = '', abas 
   const tecla = (e) => { if (!fixa && e.key === 'Escape' && !menuAberto && document.querySelector('.fundo-modal:last-of-type') === f) janela.fechar(); };
   document.addEventListener('keydown', tecla);
   f.addEventListener('pointerdown', (e) => { if (!fixa && e.target === f) janela.fechar(); });
+  // Enter num campo da janela = botão principal do rodapé (os formulários das janelas não têm botão de envio dentro)
+  f.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.isComposing || !e.target.matches('input')) return;
+    const principal = [...rodapeEl.querySelectorAll('.btn.primario')].pop();
+    if (principal && !principal.disabled) { e.preventDefault(); principal.click(); }
+  });
   if (fixa) f.querySelector('[data-fechar]').remove();
   else f.querySelector('[data-fechar]').addEventListener('click', () => janela.fechar());
   if (abas) {

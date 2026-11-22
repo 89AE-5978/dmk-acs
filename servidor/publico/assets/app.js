@@ -6,7 +6,7 @@
   Tema.iniciar($('[data-tema]'));
   const conteudo = $('[data-conteudo]');
   const menu = $('[data-menu]');
-  menu.innerHTML = ic('mais');
+  menu.innerHTML = ic('menu');
   let eu = null;
 
   // Instalável: registra o service worker (abre mesmo com internet ruim)
@@ -43,6 +43,7 @@
     f.append(b, el('<p class="fraco pequeno">Esqueceu a senha? Fale com a DMK: ela gera uma senha provisória nova.</p>'));
     f.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (b.disabled) return;   // já enviando: ignora o 2º envio
       botaoCarregando(b, true);
       try {
         const d = Object.fromEntries(new FormData(f));
@@ -57,14 +58,15 @@
 
   // ---------------------------------------------------------------- trocar a própria senha
   function trocarSenha(obrigatoria = false) {
-    const j = abrirJanela({ icone: 'cadeado', titulo: obrigatoria ? 'Crie a sua senha' : 'Trocar minha senha', sub: obrigatoria ? 'A senha que você recebeu é provisória. Crie uma só sua para continuar.' : '', tamanho: 'pequeno', corpo: '<div></div>', rodape: ' ', fixa: obrigatoria });
+    const j = abrirJanela({ icone: 'cadeado', titulo: obrigatoria ? 'Crie a sua senha' : 'Trocar minha senha', tamanho: 'pequeno', corpo: '<div></div>', rodape: ' ', fixa: obrigatoria });
+    if (obrigatoria) j.corpo.firstChild.append(el(`<div class="aviso-caixa">${ic('cadeado')}<span>A senha que você recebeu é provisória. Crie uma só sua para continuar.</span></div>`));
     const f = el('<form class="form" autocomplete="off"></form>');
     f.append(
       senhaComOlho({ rotulo: obrigatoria ? 'Senha provisória' : 'Senha atual', nome: 'atual', max: 128, inteiro: true }),
       senhaComOlho({ rotulo: 'Senha nova', nome: 'nova', max: 128, inteiro: true, ajuda: 'Mínimo 8, misturando letras maiúsculas, minúsculas, números ou símbolos.' }),
       senhaComOlho({ rotulo: 'Confirmar senha nova', nome: 'confirmar', max: 128, inteiro: true }),
     );
-    f.addEventListener('submit', (e) => { e.preventDefault(); ok.click(); });
+    f.addEventListener('submit', (e) => e.preventDefault());
     j.corpo.firstChild.append(f);
     j.rodape.innerHTML = '';
     const ok = el(`<button type="button" class="btn primario">${ic('salvar')}<span>Salvar senha</span></button>`);
