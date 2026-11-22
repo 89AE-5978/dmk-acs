@@ -285,8 +285,15 @@ const ctx = {
 
 // ---------------------------------------------------------------- páginas
 rota('GET', '/', async (req, res) => (CFG.simulacao ? arquivo(req, res, 'simulacao.html') : res.writeHead(303, { Location: 'admin/' }).end()));
-rota('GET', '/admin/', async (req, res) => arquivo(req, res, 'admin.html'));
-rota('GET', '/central/', async (req, res) => arquivo(req, res, 'central.html'));
+// Já com sessão de administrador, a tela de entrada leva direto ao painel; sem sessão, o painel leva à
+// entrada (sem piscar a tela vazia). Endereços relativos: funcionam atrás de qualquer prefixo do proxy.
+const temSessaoCentral = (req) => { const s = sessoes.obter(cookie(req, 'dmkacs')); return !!(s && s.papel === 'central'); };
+rota('GET', '/admin/', async (req, res) => (temSessaoCentral(req)
+  ? res.writeHead(303, { Location: '../central/', 'Cache-Control': 'no-store' }).end()
+  : arquivo(req, res, 'admin.html')));
+rota('GET', '/central/', async (req, res) => (temSessaoCentral(req)
+  ? arquivo(req, res, 'central.html')
+  : res.writeHead(303, { Location: '../admin/', 'Cache-Control': 'no-store' }).end()));
 rota('GET', '/provedor/', async (req, res) => arquivo(req, res, 'provedor.html'));
 rota('GET', '/app/', async (req, res) => arquivo(req, res, 'app.html'));
 rota('GET', '/app/manifest.webmanifest', async (req, res) => arquivo(req, res, 'app-manifest.webmanifest'));

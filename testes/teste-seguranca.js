@@ -106,12 +106,17 @@ const nbiFalsa = http.createServer((req, res) => {
     avancar(30);
     return nav('POST', '/api/acesso/autenticador', { desafio: a.json.desafio, codigo: codigoFn() });
   }
+  r = await adm('GET', '/central/');
+  assert.equal(r.status, 303); assert.equal(r.cab.get('location'), '../admin/', 'sem sessão o painel manda para a entrada');
   r = await entrarAdmin(adm, () => seg.codigoTotp(segredo, seg.passoAtual()));
   assert.equal(r.status, 200);
   const cookieAdmin = r.cab.get('set-cookie');
   assert.match(cookieAdmin, /HttpOnly/); assert.match(cookieAdmin, /SameSite=Strict/); assert.match(cookieAdmin, /Path=\//);
   assert.equal((await adm('GET', '/api/central/resumo')).status, 200);
-  console.log('ok  entrada com senha + app autenticador');
+  r = await adm('GET', '/admin/');
+  assert.equal(r.status, 303); assert.equal(r.cab.get('location'), '../central/', 'já logado, a entrada manda direto para o painel');
+  assert.equal((await adm('GET', '/central/')).status, 200);
+  console.log('ok  entrada com senha + app autenticador (já logado: /admin/ leva ao painel e vice-versa)');
 
   // 4) Código do autenticador não pode ser reusado; código de recuperação vale uma vez
   const nav2 = navegador('10.0.0.2');
