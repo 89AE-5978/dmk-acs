@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DMK ACS · Roteadores</title>
+<link rel="stylesheet" href="../assets/estilo.css">
+</head>
+<body>
+<div class="app">
+  <header class="topo">
+    <div class="marca"><span class="chip-icone" data-icone="wifi"></span>
+      <div class="reticencias"><h1 class="reticencias" data-titulo>Roteadores</h1><div class="sub reticencias">ACS · Wi-Fi dos clientes</div></div></div>
+    <div class="acoes"><span class="usuario reticencias" data-usuario></span>
+      <button type="button" class="btn ico" data-tema></button></div>
+  </header>
+
+  <section class="kpis" data-kpis></section>
+
+  <div class="barra">
+    <div class="fixos">
+      <label class="busca"><span data-icone="pesquisar"></span><input type="search" placeholder="Pesquisar cliente, PPPoE, Wi-Fi…" data-busca aria-label="Pesquisar"></label>
+      <button type="button" class="btn" data-filtros></button>
+    </div>
+    <div class="rolam">
+      <button type="button" class="btn" data-conectar></button>
+      <button type="button" class="btn ico" data-atualizar title="Atualizar"></button>
+      <button type="button" class="btn ico" data-ajuda title="Como funciona"></button>
+    </div>
+  </div>
+
+  <main class="cartao-lista" data-lista></main>
+</div>
+<script src="../assets/base.js"></script>
+<script src="../assets/provedor.js"></script>
+</body>
+</html>

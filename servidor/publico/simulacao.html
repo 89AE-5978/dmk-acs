@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DMK ACS · Simulação</title>
+<link rel="stylesheet" href="assets/estilo.css">
+</head>
+<body>
+<div class="app">
+  <header class="topo">
+    <div class="marca"><span class="chip-icone" data-icone="roteador"></span>
+      <div class="reticencias"><h1 class="reticencias">DMK ACS · Simulação</h1><div class="sub reticencias">Faz o papel do DMK Prisma abrindo o módulo</div></div></div>
+    <div class="acoes"><button type="button" class="btn ico" data-tema></button></div>
+  </header>
+  <div class="entrada">
+    <section class="bloco">
+      <h2>Central DMK (você, admin)</h2>
+      <p>No sistema: menu Módulos → ACS. Cadastra provedores, ativa e desativa o módulo de cada um.</p>
+      <div class="grade"><button type="button" class="btn primario" data-central></button></div>
+    </section>
+    <section class="bloco">
+      <h2>Provedores</h2>
+      <p>No sistema: o provedor com o módulo ACS ativo vê "ACS · Roteadores". Desativado, ele não entra.</p>
+      <div class="grade" data-provedores></div>
+    </section>
+  </div>
+</div>
+<script src="assets/base.js"></script>
+<script src="assets/simulacao.js"></script>
+</body>
+</html>
