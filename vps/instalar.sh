@@ -235,7 +235,11 @@ EOF
     falhar "A configuração do nginx não passou no teste (nginx -t). Nada do nginx foi mantido."
   fi
   if command -v certbot >/dev/null; then
-    if [ -n "$EMAIL" ]; then conta=(-m "$EMAIL"); else conta=(--register-unsafely-without-email); fi
+    # Conta do Let's Encrypt: se a VPS já tem (ex.: a do DMK Prisma), usa a primeira, senão o certbot
+    # pergunta qual e para (modo sem perguntas). Sem conta: cria, com e-mail se informado.
+    contas_le="$(ls /etc/letsencrypt/accounts/acme-v02.api.letsencrypt.org/directory 2>/dev/null | head -1 || true)"
+    if [ -n "$contas_le" ]; then conta=(--account "$contas_le")
+    elif [ -n "$EMAIL" ]; then conta=(-m "$EMAIL"); else conta=(--register-unsafely-without-email); fi
     if certbot --nginx -d "$DOMINIO" "${conta[@]}" --agree-tos --non-interactive --redirect > "$CONFIG/certbot.log" 2>&1; then
       ok "HTTPS ativo (certificado do $DOMINIO)"
     else

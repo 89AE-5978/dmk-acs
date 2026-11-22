@@ -37,6 +37,8 @@ const nbiFalsa = http.createServer((req, res) => {
 
 (async () => {
   await new Promise((r) => nbiFalsa.listen(0, '127.0.0.1', r));
+  // O teste não herda a configuração da VPS (o atualizador roda os testes com o acs.env carregado)
+  for (const k of Object.keys(process.env)) if (k.startsWith('DMK_ACS_')) delete process.env[k];
   Object.assign(process.env, { DMK_ACS_NBI: `http://127.0.0.1:${nbiFalsa.address().port}`, DMK_ACS_DADOS: pasta, DMK_ACS_MODO: 'producao', DMK_ACS_PROXY: '1' });
   const seg = require('../servidor/lib/seguranca');
   const scripts = require('../servidor/lib/scripts-genieacs');

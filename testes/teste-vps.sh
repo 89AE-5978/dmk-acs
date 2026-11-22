@@ -62,6 +62,8 @@ DMK_ACS_NBI=http://127.0.0.1:59999
 DMK_ACS_DADOS=$RAIZ/dados
 DMK_ACS_MODO=producao
 DMK_ACS_PORTA_MONGODB=27117
+DMK_ACS_PROXY=1
+DMK_ACS_ENDERECO_AVULSOS=http://painel.dmk.teste:7547
 EOF
 echo '{"provedores":[{"id":"starnet","nome":"STARNET","enderecoAcs":"http://acs.starnet.com.br:7547/","ativo":true}]}' > "$RAIZ/dados/provedores.json"
 gravar_instalacao 1.0.0 '"7547/tcp", "7567/tcp"' painel.dmk.teste
