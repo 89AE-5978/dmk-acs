@@ -42,11 +42,17 @@ titulo "DMK ACS - instalação em $RAIZ"
 . /etc/os-release
 case "$ID:$VERSION_ID" in
   ubuntu:22.04) MONGO_OS=ubuntu2204; MONGO_VERSOES="7.0.14 7.0.12" ;;
-  ubuntu:24.04) MONGO_OS=ubuntu2404; MONGO_VERSOES="8.0.4 8.0.3" ;;
+  ubuntu:24.04) MONGO_OS=ubuntu2404; MONGO_VERSOES="8.0.16 8.0.12 8.0.4" ;;
+  # Ubuntu mais novo que o 24.04 (ex.: 26.04): o MongoDB ainda não publica pacote próprio; o do 24.04
+  # roda nele (mesmas bibliotecas, mais novas). O instalador confere as bibliotecas com ldd logo abaixo.
+  ubuntu:2[4-9].*) MONGO_OS=ubuntu2404; MONGO_VERSOES="8.0.16 8.0.12 8.0.4"
+                   aviso "Ubuntu $VERSION_ID: usando o MongoDB feito para o Ubuntu 24.04 (compatível)." ;;
   ubuntu:20.04) MONGO_OS=ubuntu2004; MONGO_VERSOES="7.0.14 7.0.12" ;;
   debian:12)    MONGO_OS=debian12;   MONGO_VERSOES="7.0.14 7.0.12" ;;
   debian:11)    MONGO_OS=debian11;   MONGO_VERSOES="7.0.14 7.0.12" ;;
-  *) falhar "Sistema $PRETTY_NAME não testado. Suportados: Ubuntu 20.04/22.04/24.04, Debian 11/12." ;;
+  debian:1[3-9]) MONGO_OS=debian12;  MONGO_VERSOES="7.0.14 7.0.12"
+                   aviso "Debian $VERSION_ID: usando o MongoDB feito para o Debian 12 (compatível)." ;;
+  *) falhar "Sistema $PRETTY_NAME não testado. Suportados: Ubuntu 20.04 ou mais novo, Debian 11 ou mais novo." ;;
 esac
 ok "$PRETTY_NAME"
 versao_node_ok || falhar "Precisa do Node.js 18 ou mais novo (o mesmo do DMK Prisma). node -v: $(node -v 2>/dev/null || echo ausente)"
@@ -113,9 +119,12 @@ rm -rf "$tmp"
 faltando="$(ldd "$PROGRAMAS/mongodb/bin/mongod" | awk '/not found/{print $1}' | tr '\n' ' ')"
 if [ -n "$faltando" ]; then
   info "Instalando bibliotecas do sistema que o MongoDB pede: $faltando"
-  apt-get install -y --no-install-recommends libcurl4 2>/dev/null || apt-get install -y --no-install-recommends libcurl4t64
+  apt-get -o DPkg::Lock::Timeout=300 install -y -q --no-install-recommends libcurl4t64 >/dev/null 2>&1 \
+    || apt-get -o DPkg::Lock::Timeout=300 install -y -q --no-install-recommends libcurl4 >/dev/null 2>&1 || true
 fi
-ok "MongoDB $("$PROGRAMAS/mongodb/bin/mongod" --version | head -1 | awk '{print $3}')"
+versao_mongo="$( { "$PROGRAMAS/mongodb/bin/mongod" --version 2>&1 || true; } | head -1 | awk '{print $3}')"
+[[ "$versao_mongo" == v* ]] || falhar "O MongoDB baixado não roda neste sistema: $( { "$PROGRAMAS/mongodb/bin/mongod" --version 2>&1 || true; } | head -2 | tr '\n' ' ')"
+ok "MongoDB $versao_mongo"
 
 # ------------------------------------------------------------------ GenieACS (npm, dentro da pasta)
 titulo "GenieACS"
