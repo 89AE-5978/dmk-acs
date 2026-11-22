@@ -71,17 +71,26 @@ O painel não tem usuário/senha próprios: quem entra é o DMK Prisma, que já 
 
 Se o módulo for removido da VPS, o Prisma só deixa de mostrar o menu (o serviço some).
 
-## VPS: instalar, atualizar, remover
+## VPS: instalar, atualizar, remover (um comando só)
 
-Tudo do módulo fica em **`/opt/dmk-acs`** (painel, GenieACS, MongoDB próprio, dados, backup). Fora dela só os serviços `dmk-acs-*` do systemd, o usuário de sistema `dmkacs` e as regras de firewall das portas dos roteadores.
+Antes: crie no DNS um registro **A** do domínio do painel (ex.: `acs.dmksolutions.io`) apontando para o IP da VPS.
 
 ```bash
 # >>> NA VPS (root) <<<
-git clone <repositório dmk-acs> /opt/dmk-acs/codigo-fonte
-bash /opt/dmk-acs/codigo-fonte/vps/instalar.sh      # confere sistema, Node, disco e portas antes de mexer
-bash /opt/dmk-acs/codigo-fonte/vps/atualizar.sh     # testa a versão nova antes, backup único, volta sozinho se não subir
-bash /opt/dmk-acs/codigo-fonte/vps/remover.sh       # remove tudo do módulo; --salvar=/caminho.tar.gz guarda os dados antes
+curl -fsSL https://raw.githubusercontent.com/89AE-5978/dmk-acs/main/dmk-acs.sh | sudo bash
 ```
+
+- **Primeira vez:** pergunta só o **domínio**. Instala o que faltar (git, nginx, certbot, Node.js 20), baixa o código,
+  instala tudo em `/opt/dmk-acs`, liga os serviços, publica o painel com **HTTPS** e mostra:
+  o link do painel, o **código de primeiro acesso** (você cria seu usuário, senha e liga o app autenticador),
+  o endereço dos roteadores e os dados para ligar no **DMK Prisma** (endereço interno + chave de integração).
+- **Já instalado:** o mesmo comando mostra o menu **1) Atualizar · 2) Ver dados de acesso · 3) Remover**.
+- Sem perguntas (para scripts): `... | sudo bash -s -- instalar --dominio=acs.exemplo.com.br`, `... -s -- atualizar`, `... -s -- dados`, `... -s -- remover --confirmar`.
+
+O atualizador testa a versão nova antes de trocar, guarda um backup único (`/opt/dmk-acs/backups/ultimo.tar.gz`) e volta sozinho se não subir.
+O removedor apaga só o que o módulo criou (serviços `dmk-acs-*`, usuário `dmkacs`, regras de firewall, site `dmk-acs.conf` do nginx e o certificado dele, a pasta `/opt/dmk-acs`); DMK Prisma e outros sistemas não são tocados.
+
+Tudo do módulo fica em **`/opt/dmk-acs`** (painel, GenieACS, MongoDB próprio, dados, backup).
 
 | Porta | Uso | Acesso |
 |---|---|---|

@@ -38,7 +38,7 @@ export PATH="$T/bin:$PATH"
 # --- "GitHub": repositório com a versão 1.0.0
 git init -q --bare "$T/origem.git"
 git -C "$T" clone -q "$T/origem.git" trabalho 2>/dev/null
-cp -a "$REPO/servidor" "$REPO/testes" "$REPO/vps" "$T/trabalho/"
+cp -a "$REPO/servidor" "$REPO/testes" "$REPO/vps" "$REPO/dmk-acs.sh" "$T/trabalho/"
 echo 1.0.0 > "$T/trabalho/VERSION"
 git -C "$T/trabalho" -c user.name=t -c user.email=t@t add -A
 git -C "$T/trabalho" -c user.name=t -c user.email=t@t commit -qm v1.0.0
@@ -74,9 +74,20 @@ echo "ok  instalação simulada 1.0.0 no ar"
 [[ "$(bash "$RAIZ/codigo-fonte/vps/atualizar.sh")" == *"Já está na versão 1.0.0"* ]] || falha "deveria dizer que já está atualizado"
 echo "ok  sem versão nova: nada a fazer"
 
-# 2) Versão nova boa
+# 1b) Dados de acesso: painel, primeiro acesso e conexão com o DMK Prisma
+bash "$RAIZ/codigo-fonte/dmk-acs.sh" dados > "$T/saida.txt" 2>&1 || { cat "$T/saida.txt"; falha "dados"; }
+grep -q "painel.dmk.teste/admin/" "$T/saida.txt" && grep -q "PRIMEIRO ACESSO .* código [A-Z2-9]\{4\}-" "$T/saida.txt" \
+  && grep -q "Chave de integração ... [0-9a-f]\{32,\}" "$T/saida.txt" || { cat "$T/saida.txt"; falha "dados de acesso incompletos"; }
+echo "ok  dados de acesso (painel, primeiro acesso, chave do Prisma)"
+
+# 1c) Comando único com domínio inválido: recusa sem criar nada
+if DMK_ACS_RAIZ="$T/outra/dmk-acs" bash "$REPO/dmk-acs.sh" instalar --dominio='nao vale' > "$T/saida.txt" 2>&1; then falha "aceitou domínio inválido"; fi
+grep -q "Domínio inválido" "$T/saida.txt" && [ ! -e "$T/outra" ] || { cat "$T/saida.txt"; falha "domínio inválido deveria parar antes de tudo"; }
+echo "ok  comando único recusa domínio inválido sem mexer em nada"
+
+# 2) Versão nova boa (pelo comando único: dmk-acs.sh atualizar)
 publicar 1.0.1
-bash "$RAIZ/codigo-fonte/vps/atualizar.sh" > "$T/saida.txt" || { cat "$T/saida.txt"; falha "atualização 1.0.1"; }
+bash "$RAIZ/codigo-fonte/dmk-acs.sh" atualizar > "$T/saida.txt" 2>&1 || { cat "$T/saida.txt"; falha "atualização 1.0.1"; }
 [[ "$(saude_painel)" == *'"versao":"1.0.1"'* ]] || falha "painel não ficou na 1.0.1"
 grep -q '"versao": "1.0.1"' "$RAIZ/instalacao.json" || falha "instalacao.json"
 grep -q '"7547/tcp", "7567/tcp"' "$RAIZ/instalacao.json" || falha "regras do firewall perdidas"
@@ -105,7 +116,7 @@ grep -q "Voltou para a 1.0.1" "$T/saida.txt" || { cat "$T/saida.txt"; falha "rol
 echo "ok  1.0.3 não subiu: voltou sozinha para a 1.0.1"
 
 # 5) Remoção completa com backup, sem tocar em mais nada
-bash "$RAIZ/codigo-fonte/vps/remover.sh" --confirmar --salvar="$T/backup-final.tar.gz" > "$T/saida.txt" 2>&1 || { cat "$T/saida.txt"; falha "remover"; }
+bash "$RAIZ/codigo-fonte/dmk-acs.sh" remover --confirmar --salvar="$T/backup-final.tar.gz" > "$T/saida.txt" 2>&1 || { cat "$T/saida.txt"; falha "remover"; }
 [ ! -e "$RAIZ" ] || falha "pasta do módulo ficou"
 [[ "$(ls "$DMK_ACS_SYSTEMD")" == *dmk-acs* ]] && falha "serviço do módulo ficou"
 [ -f "$DMK_ACS_SYSTEMD/dmk-prisma.service" ] || falha "APAGOU SERVIÇO DE OUTRO SISTEMA"

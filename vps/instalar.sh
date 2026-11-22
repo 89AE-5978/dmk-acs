@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # DMK ACS - INSTALADOR (VPS Ubuntu/Debian x86_64, como root).
 #
-#   git clone <repositório dmk-acs> /opt/dmk-acs/codigo-fonte
-#   bash /opt/dmk-acs/codigo-fonte/vps/instalar.sh
+#   Normalmente pelo comando único (pergunta só o domínio):
+#     curl -fsSL https://raw.githubusercontent.com/89AE-5978/dmk-acs/main/dmk-acs.sh | sudo bash
+#   Ou à mão: git clone <repositório> /opt/dmk-acs/codigo-fonte && bash .../vps/instalar.sh --dominio=...
 #
-# Opções: --dominio=painel.dmksolutions.io --email=voce@dominio   painel público com HTTPS (nginx + certbot)
+# Opções: --dominio=acs.dmksolutions.io   painel público com HTTPS (nginx + certbot); também vira o
+#                                         endereço do ACS dos clientes avulsos (http://dominio:7547)
+#         --email=voce@dominio            opcional: avisos de vencimento do certificado
 #         --porta-cwmp=7547 --porta-fs=7567 --porta-nbi=7557 --porta-ui=7570
 #         --porta-painel=7580 --porta-mongodb=27117 --sem-firewall --moldura="https://central.dominio"
 #
@@ -52,7 +55,6 @@ command -v npm >/dev/null || falhar "npm não encontrado (vem junto com o Node.j
 for c in curl tar git ss; do command -v "$c" >/dev/null || falhar "Falta o comando $c."; done
 if [ -n "$DOMINIO" ]; then
   [[ "$DOMINIO" =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$ && "$DOMINIO" == *.* ]] || falhar "Domínio inválido: $DOMINIO"
-  [ -n "$EMAIL" ] || falhar "Com --dominio informe também --email= (aviso de vencimento do certificado)."
   command -v nginx >/dev/null || falhar "Para o painel público é preciso o nginx (o mesmo que já serve o DMK Prisma)."
   [ ! -e "$NGINX/sites-available/dmk-acs.conf" ] || falhar "Já existe $NGINX/sites-available/dmk-acs.conf."
   ok "Painel público em https://$DOMINIO"
@@ -154,6 +156,7 @@ DMK_ACS_MODO=producao
 DMK_ACS_MOLDURA=$MOLDURA
 DMK_ACS_PORTA_MONGODB=$PORTA_MONGODB
 DMK_ACS_PROXY=$([ -n "$DOMINIO" ] && echo 1 || echo 0)
+DMK_ACS_ENDERECO_AVULSOS=http://${DOMINIO:-$IP_PUBLICO}:$PORTA_CWMP
 EOF
 umask 022
 mkdir -p "$DADOS/ext"
@@ -224,7 +227,8 @@ EOF
     falhar "A configuração do nginx não passou no teste (nginx -t). Nada do nginx foi mantido."
   fi
   if command -v certbot >/dev/null; then
-    certbot --nginx -d "$DOMINIO" -m "$EMAIL" --agree-tos --non-interactive --redirect >/dev/null 2>&1 \
+    if [ -n "$EMAIL" ]; then conta=(-m "$EMAIL"); else conta=(--register-unsafely-without-email); fi
+    certbot --nginx -d "$DOMINIO" "${conta[@]}" --agree-tos --non-interactive --redirect >/dev/null 2>&1 \
       && ok "HTTPS ativo (certificado do $DOMINIO)" \
       || aviso "Não consegui o certificado agora (o DNS do $DOMINIO já aponta para esta VPS?). Depois rode: certbot --nginx -d $DOMINIO"
   else
@@ -236,18 +240,4 @@ INSTALANDO=0
 gravar_instalacao "$(cat "$APP/VERSION")" "$UFW_REGRAS" "$DOMINIO"
 
 titulo "DMK ACS instalado"
-cat <<EOF
-  Pasta ............ $RAIZ   (tudo do módulo fica aqui)
-  Painel ........... http://127.0.0.1:$PORTA_PAINEL/   (só nesta VPS; o DMK Prisma abre por ele)
-  Roteadores ....... http://acs.<dominio-do-provedor>:$PORTA_CWMP/   (DNS do provedor -> $IP_PUBLICO)
-  Segredo p/ Prisma  $DADOS/segredo-integracao.txt
-  Painel público ... $([ -n "$DOMINIO" ] && echo "https://$DOMINIO/admin/" || echo "não (instale com --dominio=... para publicar)")
-  PRIMEIRO ACESSO .. código $(cat "$DADOS/primeiro-acesso.txt" 2>/dev/null || echo "(veja: journalctl -u dmk-acs-painel | grep PRIMEIRO)")
-  Serviços ......... systemctl status 'dmk-acs-*'      Logs: journalctl -u dmk-acs-painel -f
-  Atualizar ........ bash $CODIGO/vps/atualizar.sh
-  Remover .......... bash $CODIGO/vps/remover.sh
-
-  Painel técnico do GenieACS (só se precisar), por túnel:
-    >>> NO SEU PC (PowerShell) <<<
-    ssh -N -L $PORTA_UI:127.0.0.1:$PORTA_UI root@$IP_PUBLICO      e abra http://localhost:$PORTA_UI/
-EOF
+bash "$AQUI/dados.sh" --sem-titulo
