@@ -286,12 +286,26 @@ function enviar(res, status, corpo, cabecalhos = {}) {
   res.end(dados);
 }
 
+/**
+ * Endereço público completo (https://acs.dominio/ + prefixo do proxy), para as tags de compartilhamento
+ * (og:url, og:image), que precisam de endereço absoluto. Host conferido: só letras, números, ponto, hífen e porta.
+ */
+function urlPublica(req) {
+  const host = String((CFG.proxy && req.headers['x-forwarded-host']) || req.headers.host || '').split(',')[0].trim();
+  if (!/^[a-z0-9.-]+(:\d{1,5})?$/i.test(host)) return baseDe(req);
+  return `${ehHttps(req) ? 'https' : 'http'}://${host}${baseDe(req)}`;
+}
+
 function arquivo(req, res, nome) {
   const alvo = path.join(PUBLICO, nome);
   if (!alvo.startsWith(PUBLICO + path.sep)) return enviar(res, 404, 'Não encontrado');
   fs.readFile(alvo, (e, dados) => {
     if (e) return enviar(res, 404, 'Não encontrado');
-    res.writeHead(200, { 'Content-Type': TIPOS[path.extname(alvo)] || 'application/octet-stream', 'Cache-Control': 'no-cache', ...cabecalhosSeguranca(req) });
+    const ext = path.extname(alvo);
+    if (ext === '.html') dados = Buffer.from(dados.toString('utf8').replaceAll('{{URL}}', urlPublica(req)));
+    // Ícones e imagens mudam pouco: guardar 1 dia no navegador (o resto sempre confere com o servidor)
+    const cache = ext === '.png' || ext === '.svg' ? 'public, max-age=86400' : 'no-cache';
+    res.writeHead(200, { 'Content-Type': TIPOS[ext] || 'application/octet-stream', 'Cache-Control': cache, ...cabecalhosSeguranca(req) });
     res.end(dados);
   });
 }
@@ -373,6 +387,8 @@ rota('GET', '/central/', async (req, res) => (temSessaoCentral(req)
 rota('GET', '/provedor/', async (req, res) => arquivo(req, res, 'provedor.html'));
 rota('GET', '/app/', async (req, res) => arquivo(req, res, 'app.html'));
 rota('GET', '/app/manifest.webmanifest', async (req, res) => arquivo(req, res, 'app-manifest.webmanifest'));
+rota('GET', '/painel.webmanifest', async (req, res) => arquivo(req, res, 'painel-manifest.webmanifest'));
+rota('GET', '/favicon.ico', async (req, res) => arquivo(req, res, 'assets/favicon-acs-32.png'));   // navegador que pede /favicon.ico
 rota('GET', '/app/sw.js', async (req, res) => arquivo(req, res, 'app-sw.js'));
 rota('GET', '/assets/([a-z0-9-]+\\.(?:css|js|svg|png))', async (req, res, m) => arquivo(req, res, 'assets/' + m[1]));
 rota('GET', '/saude', async (req, res) => enviar(res, 200, { ok: true, versao: VERSAO, scriptsNoAcs: estadoAcs.scriptsOk, erroAcs: estadoAcs.erro || undefined }));

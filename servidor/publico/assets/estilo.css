@@ -390,7 +390,6 @@ html[data-theme="dark"] a.btn.primario { color: #062018; }
 .ap-nome small { color: var(--suave); font-size: 11.5px; }
 .ap-ip { font-size: 12.5px; }
 .chip-conexao { justify-self: end; font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; color: var(--marca); background: color-mix(in srgb, var(--marca) 10%, transparent); }
-.carregando-linha { margin: 8px 0; }
 @media (max-width: 560px) {
   .lista-aparelhos li { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; }
   .ap-ip { display: none; }
@@ -401,3 +400,30 @@ html[data-theme="dark"] a.btn.primario { color: #062018; }
 .acoes-roteador { width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
 .acoes-roteador .btn { height: 58px; padding: 6px 4px; flex-direction: column; justify-content: center; gap: 4px; font-size: 12.5px; min-width: 0; }
 .acoes-roteador .btn span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ------------------------------------------------------------------ abertura (tela de carregamento)
+   Aparece por cima de tudo enquanto a página busca os dados; some com um fade quando a página chama
+   DMK.pronto(). Cores do tema (o tema já vem certo do tema.js, sem piscar). */
+.abertura { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: var(--fundo);
+  background-image: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--marca) 13%, transparent), transparent 55%); transition: opacity .35s ease, visibility .35s ease; }
+.abertura.saindo { opacity: 0; visibility: hidden; pointer-events: none; }
+.abertura-caixa { display: flex; flex-direction: column; align-items: center; gap: 6px; animation: abertura-entra .45s ease both; }
+.abertura-logo { width: 76px; height: 76px; border-radius: 20px; margin-bottom: 8px; box-shadow: 0 10px 30px color-mix(in srgb, var(--marca) 30%, transparent); animation: abertura-pulso 1.8s ease-in-out infinite; }
+.abertura-nome { font-size: 20px; font-weight: 700; color: var(--tinta); letter-spacing: -.01em; }
+.abertura-sub { font-size: 13px; color: var(--suave); margin-bottom: 14px; }
+@keyframes abertura-entra { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes abertura-pulso { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+/* Spinner padrão (verde da marca): anel com ponta, gira suave. .mini para dentro de botões e linhas. */
+.spinner { display: inline-block; width: 30px; height: 30px; border-radius: 50%; flex: none;
+  border: 3px solid color-mix(in srgb, var(--marca) 18%, transparent); border-top-color: var(--marca); border-right-color: var(--marca);
+  animation: girar .75s linear infinite; }
+.spinner.mini { width: 15px; height: 15px; border-width: 2px; }
+.btn.primario .spinner.mini { border-color: rgba(255, 255, 255, .35); border-top-color: #fff; border-right-color: #fff; }
+@keyframes girar { to { transform: rotate(360deg); } }
+.carregando { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 22px 8px; color: var(--suave); font-size: 13.5px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) {
+  .abertura-logo, .abertura-caixa { animation: none; }
+  .spinner { animation-duration: 1.6s; }
+}

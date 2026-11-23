@@ -24,6 +24,16 @@ O painel grava no GenieACS o provision `dmk` (roda em toda conexão do roteador)
 
 O painel só lista e só comanda roteadores com a marca do provedor logado (conferido também em cada comando).
 
+## Aparência e modo aplicativo
+
+- Tela de abertura com o ícone, o nome e um carregamento verde enquanto a página busca os dados (some sozinha; no máximo 8 s).
+- Ícone na aba do navegador, ícone para "Adicionar à tela inicial" e barra do navegador verde (`theme-color #147e60`).
+- Painel (`/admin/`) e app (`/app/`) instaláveis como aplicativo (`/painel.webmanifest` e `/app/manifest.webmanifest`).
+- Prévia ao compartilhar o link (WhatsApp, Telegram...): título, descrição e imagem 1200×630 (`og:*`, `twitter:*`)
+  com o endereço público completo montado pelo domínio do pedido. Fontes das imagens em `docs/marca/`
+  (geradas com `rsvg-convert`).
+- O tema (claro/escuro) é aplicado antes de desenhar a página (`assets/tema.js`): sem piscar branco no escuro.
+
 ## Wi-Fi em qualquer modelo (parâmetros virtuais)
 
 O painel só conhece estes parâmetros virtuais do GenieACS: `dmk_pppoe`, `dmk_wifi_ssid`, `dmk_wifi_senha`, `dmk_wan_ip` (IP de internet), `dmk_canal_24` / `dmk_canal_5` (canal por faixa: `auto|<atual>|<possíveis>`; grava `auto` ou o número) e `dmk_aparelhos` (lista de aparelhos em JSON, lida só sob pedido). Os scripts em `servidor/lib/scripts-genieacs.js` traduzem para o lugar certo de cada modelo:

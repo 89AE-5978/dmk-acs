@@ -137,5 +137,6 @@
     etapa.append(caixa);
   }
 
-  api('GET', '../api/acesso/estado').then((e) => (e.temAdmin ? entrar() : primeiroAcesso())).catch((e) => avisar('Sem conexão', e.message, 'erro'));
+  api('GET', '../api/acesso/estado').then((e) => (e.temAdmin ? entrar() : primeiroAcesso())).catch((e) => avisar('Sem conexão', e.message, 'erro'))
+    .finally(() => DMK.pronto());
 })();

@@ -1,0 +1,17 @@
+{
+  "name": "DMK ACS",
+  "short_name": "DMK ACS",
+  "description": "Gerência de roteadores dos clientes: Wi-Fi, canal, aparelhos conectados e IP, por provedor.",
+  "id": "./admin/",
+  "start_url": "./admin/",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f7",
+  "theme_color": "#147e60",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "assets/icone-acs-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/icone-acs-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/icone-acs.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

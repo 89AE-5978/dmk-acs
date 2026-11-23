@@ -182,7 +182,7 @@
     }
     async function roteadores(corpo) {
       j.rodape.innerHTML = '';
-      corpo.innerHTML = '<p class="fraco">Carregando…</p>';
+      corpo.innerHTML = DMK.carregandoHtml();
       try { corpo.innerHTML = `<p class="fraco">Somente leitura: quem troca Wi-Fi e reinicia é o provedor, no módulo dele.</p>${miniLista(await api('GET', `../api/central/provedores/${p.id}/roteadores`), ['Nenhum roteador ainda', 'Quando os roteadores apontarem para o endereço do provedor, aparecem aqui.'])}`; } catch (e) { corpo.innerHTML = ''; tratarErro(e); }
     }
     j.irPara('dados');
@@ -244,7 +244,7 @@
     // Abas que precisam do roteador do cliente: busca e, sem roteador ainda, mostra o aviso
     async function comRoteador(corpo, desenhar) {
       j.rodape.innerHTML = '';
-      corpo.innerHTML = '<p class="fraco">Carregando…</p>';
+      corpo.innerHTML = DMK.carregandoHtml();
       let rs;
       try { rs = await api('GET', `../api/central/avulsos/${c.codigo}/roteadores`); } catch (e) { corpo.innerHTML = ''; return tratarErro(e); }
       if (!rs.length) { corpo.innerHTML = vazioHtml('Aguardando o roteador', 'Configure o roteador do cliente com o endereço da aba "Como conectar". Em até 5 minutos ele aparece aqui.'); return; }
@@ -253,7 +253,7 @@
 
     async function roteador(corpo) {
       j.rodape.innerHTML = '';
-      corpo.innerHTML = '<p class="fraco">Carregando…</p>';
+      corpo.innerHTML = DMK.carregandoHtml();
       let rs;
       try { rs = await api('GET', `../api/central/avulsos/${c.codigo}/roteadores`); } catch (e) { corpo.innerHTML = ''; return tratarErro(e); }
       if (!rs.length) {
@@ -491,6 +491,6 @@
 
   irPara(secao);
   // F5 com a seção Conexão aberta: o formulário nasce antes do resumo chegar; redesenha quando chega
-  carregar().then(() => { if (secao === 'conexao') desenharConexao(); });
+  carregar().then(() => { if (secao === 'conexao') desenharConexao(); }).finally(() => DMK.pronto());
   setInterval(() => { if (!document.hidden && !document.querySelector('.fundo-modal')) carregar(); }, 30000);
 })();

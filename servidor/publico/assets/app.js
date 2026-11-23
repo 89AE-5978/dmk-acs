@@ -161,6 +161,6 @@
     telaEntrar();
   }));
 
-  carregar();
+  Promise.resolve(carregar()).finally(() => DMK.pronto());
   setInterval(() => { if (!document.hidden && eu && !document.querySelector('.fundo-modal')) carregar(); }, 30000);
 })();

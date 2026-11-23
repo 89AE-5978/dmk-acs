@@ -262,10 +262,26 @@ function comoFunciona(titulo, html) {
   abrirJanela({ icone: 'ajuda', titulo, tamanho: 'medio', corpo: html });
 }
 
+// ------------------------------------------------------------------ carregando
+/** Spinner com texto, no lugar de um conteúdo que ainda vai chegar. */
+const carregandoHtml = (texto = 'Carregando…') => `<div class="carregando"><span class="spinner mini"></span><span>${esc(texto)}</span></div>`;
+
+/**
+ * Tira a tela de abertura (fade). Cada página chama quando os primeiros dados chegaram; fica no mínimo
+ * ~0,4 s (sem piscar) e, se algo travar, sai sozinha em 8 s para não prender a pessoa.
+ */
+function pronto() {
+  const a = document.querySelector('[data-abertura]');
+  if (!a || a.classList.contains('saindo')) return;
+  const espera = Math.max(0, 400 - performance.now());
+  setTimeout(() => { a.classList.add('saindo'); setTimeout(() => a.remove(), 450); }, espera);
+}
+setTimeout(pronto, 8000);
+
 function botaoCarregando(botao, carregando) {
   botao.disabled = carregando;
   botao.dataset.rotulo ??= botao.innerHTML;
-  if (carregando) botao.innerHTML = `${ic('relogio')}<span>Enviando…</span>`;
+  if (carregando) botao.innerHTML = '<span class="spinner mini"></span><span>Enviando…</span>';
   else botao.innerHTML = botao.dataset.rotulo;
 }
 
@@ -513,7 +529,7 @@ async function desenharAparelhos(corpo, rodape, url) {
   const atualizar = el(`<button type="button" class="btn">${ic('atualizar')}<span>Atualizar lista</span></button>`);
   rodape.append(atualizar);
   async function ler() {
-    corpo.innerHTML = '<p class="fraco carregando-linha">Perguntando ao roteador quem está conectado…</p>';
+    corpo.innerHTML = carregandoHtml('Perguntando ao roteador quem está conectado…');
     botaoCarregando(atualizar, true);
     let x;
     try { x = await api('POST', url); } catch (e) { corpo.innerHTML = ''; botaoCarregando(atualizar, false); return tratarErroPadrao(e); }
@@ -545,4 +561,4 @@ async function desenharAparelhos(corpo, rodape, url) {
 let tratarErroPadrao = (e) => avisar('Não deu certo', e.message, 'erro');
 function definirTratarErro(fn) { tratarErroPadrao = fn; }
 
-window.DMK = { $, esc, el, ic, iconesDaPagina, abrirMenu, telefoneBonito, mascaraTelefone, Tema, Som, avisar, api, haQuanto, dataHora, seletor, abrirJanela, confirmar, comoFunciona, criarLista, campo, erroNoCampo, botaoCarregando, copiar, vazioHtml, desenharCanal, desenharAparelhos, definirTratarErro, RES_ROTEADOR };
+window.DMK = { $, esc, el, ic, iconesDaPagina, abrirMenu, telefoneBonito, mascaraTelefone, Tema, Som, avisar, api, haQuanto, dataHora, seletor, abrirJanela, confirmar, comoFunciona, criarLista, campo, erroNoCampo, botaoCarregando, copiar, vazioHtml, desenharCanal, desenharAparelhos, definirTratarErro, RES_ROTEADOR, carregandoHtml, pronto };

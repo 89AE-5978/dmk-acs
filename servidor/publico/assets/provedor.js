@@ -186,6 +186,6 @@
       <li><strong>Online</strong>: falou com o ACS nos últimos ${info?.onlineMin ?? 11} minutos. Comando para roteador que não atende na hora fica na fila e é aplicado no próximo contato.</li>
     </ol>`));
 
-  carregar();
+  Promise.resolve(carregar()).finally(() => DMK.pronto());
   setInterval(() => { if (!document.hidden && !document.querySelector('.fundo-modal')) carregar(); }, 30000);
 })();

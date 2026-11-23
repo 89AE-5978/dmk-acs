@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="630" viewBox="0 0 1200 630">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0c4f3d"/><stop offset="1" stop-color="#147e60"/></linearGradient>
+<radialGradient id="r" cx="0.85" cy="0.1" r="0.7"><stop offset="0" stop-color="#ffffff" stop-opacity=".16"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient></defs>
+<rect width="1200" height="630" fill="url(#g)"/><rect width="1200" height="630" fill="url(#r)"/>
+<g fill="none" stroke="#fff" stroke-opacity=".07" stroke-width="40" stroke-linecap="round"><path d="M820 640a330 330 0 0 1 460 0"/><path d="M900 640a220 220 0 0 1 300 0"/></g>
+<image x="96" y="175" width="280" height="280" xlink:href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjExMiIgZmlsbD0iIzE0N2U2MCIvPjxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48cGF0aCBkPSJNMTIwIDIzNmExOTYgMTk2IDAgMCAxIDI3MiAwIi8+PHBhdGggZD0iTTE3MCAyOTBhMTI0IDEyNCAwIDAgMSAxNzIgMCIvPjxwYXRoIGQ9Ik0yMjAgMzQ0YTUyIDUyIDAgMCAxIDcyIDAiLz48L2c+PGNpcmNsZSBjeD0iMjU2IiBjeT0iMzkyIiByPSIyMiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPgo="/>
+<text x="440" y="300" font-family="Inter" font-weight="700" font-size="92" fill="#fff">DMK Wi-Fi</text>
+<text x="442" y="370" font-family="Inter" font-weight="500" font-size="36" fill="#d7efe7">Troque o nome e a senha do seu Wi-Fi</text>
+<text x="442" y="418" font-family="Inter" font-weight="500" font-size="36" fill="#d7efe7">sem precisar entrar no roteador</text>
+<text x="96" y="566" font-family="Inter" font-weight="600" font-size="26" fill="#ffffff" fill-opacity=".7">DMK Soluções</text>
+</svg>

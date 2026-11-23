@@ -273,6 +273,28 @@ const nbiFalsa = http.createServer((req, res) => {
   r = await fetch(base + '/provedor/');
   assert.match(r.headers.get('content-security-policy'), /frame-ancestors 'self'/);
   assert.equal((await fetch(base + '/assets/../servidor.js')).status, 404);
+  // Personalização: ícones, barra verde, modo aplicativo e prévia de compartilhamento com endereço completo
+  // fetch não deixa trocar o Host: pede pelo http do Node
+  const pagina = (caminho, host) => new Promise((ok, erro) => {
+    require('http').get(base + caminho, { headers: { Host: host } }, (res) => { let t = ''; res.on('data', (c) => { t += c; }); res.on('end', () => ok(t)); }).on('error', erro);
+  });
+  let html = await pagina('/provedor/', 'acs.exemplo.com.br');
+  assert.match(html, /<meta name="theme-color" content="#147e60">/);
+  assert.match(html, /<link rel="icon" href="\.\.\/assets\/icone-acs\.svg"/);
+  assert.match(html, /<link rel="manifest" href="\.\.\/painel\.webmanifest">/);
+  assert.match(html, /<meta property="og:image" content="http:\/\/acs\.exemplo\.com\.br\/assets\/compartilhar-acs\.png">/, 'og:image absoluto');
+  assert.ok(!html.includes('{{URL}}'), 'nenhum marcador sobrando');
+  assert.match(html, /data-abertura/, 'tela de abertura');
+  html = await pagina('/app/', 'x"><script>');
+  assert.match(html, /<meta property="og:url" content="\/app\/">/, 'host estranho: endereço relativo, sem injetar nada');
+  assert.match(html, /compartilhar-app\.png/);
+  for (const a of ['/painel.webmanifest', '/app/manifest.webmanifest', '/favicon.ico', '/assets/icone-acs.svg', '/assets/icone-acs-192.png', '/assets/icone-acs-512.png', '/assets/icone-acs-180.png', '/assets/compartilhar-acs.png', '/assets/compartilhar-app.png', '/assets/tema.js', '/assets/favicon-app-32.png', '/assets/icone-app-180.png']) {
+    r = await fetch(base + a);
+    assert.equal(r.status, 200, a);
+  }
+  const man = await (await fetch(base + '/painel.webmanifest')).json();
+  assert.equal(man.theme_color, '#147e60'); assert.equal(man.start_url, './admin/');
+  for (const i of man.icons) assert.equal((await fetch(new URL(i.src, base + '/painel.webmanifest'))).status, 200, i.src);
 
   console.log('teste-servidor: OK (todos os passos)');
   servidor.close(); nbiFalsa.close();

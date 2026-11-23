@@ -26,5 +26,5 @@
       b.addEventListener('click', () => entrar('provedor', p.id));
       alvo.append(b);
     }
-  }).catch((e) => avisar('Não deu certo', e.message, 'erro'));
+  }).catch((e) => avisar('Não deu certo', e.message, 'erro')).finally(() => DMK.pronto());
 })();
